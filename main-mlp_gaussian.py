@@ -138,7 +138,7 @@ if args.mode == 'train' and not os.path.isfile('./models/mlp_gaussian/'+model_sp
     for epoch in range(args.gaussian_nepochs):
 
         mlp_gaussian_trainer.train()
-        val_loss, _ = mlp_gaussian_trainer.evaluate()
+        val_loss = mlp_gaussian_trainer.evaluate()
         current_lr = mlp_gaussian_trainer.current_lr
 
         if((epoch+1)% 10 == 0):

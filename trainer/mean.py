@@ -79,7 +79,9 @@ class MeanTrainer(trainer.mean_GenericTrainer):
             val_loss /= val_num
             self.loss['val_loss'].append(val_loss)
             
-        val_r2 = r2_score(true_arr, pred_arr)
+
+       
+#         val_r2 = r2_score(true_arr, pred_arr)
         
         if val_loss < self.best_loss:
             self.best_model = copy.deepcopy(self.model)
@@ -87,4 +89,4 @@ class MeanTrainer(trainer.mean_GenericTrainer):
             self.best_mean = pred_arr
             
                 
-        return val_loss, val_r2      
+        return val_loss     

@@ -5,32 +5,51 @@ import torch.nn.functional as F
 
     
 class wgan_gen(nn.Module): 
-    def __init__(self, d_noise_num_of_input, gan_hidden_dim, num_of_output): # noise dim = 100
+    def __init__(self, d_noise_num_of_input, layer, gan_hidden_dim, num_of_output): # noise dim = 100
         super(wgan_gen, self).__init__()
+
+        self.layer = layer
+        print('layer', self.layer)
+        
+               
         self.fc1 = nn.Linear(d_noise_num_of_input, gan_hidden_dim)
-        self.fc2 = nn.Linear(gan_hidden_dim, gan_hidden_dim)
-        self.fc3 = nn.Linear(gan_hidden_dim, num_of_output)
+        self.hidden = []
+        for k in range(self.layer):
+            self.hidden.append(nn.Linear(gan_hidden_dim, gan_hidden_dim))
+           
+        self.out = nn.Linear(gan_hidden_dim, num_of_output)
         
     def forward(self, noise, x):
-        gen_input = torch.cat((noise, x), axis=1)
-        r = F.relu(self.fc1(gen_input))
-        r = F.relu(self.fc2(r))
-        r = self.fc3(r)
+        r = self.fc1(torch.cat((noise, x), axis=1))
+        for layer in self.hidden:
+            r = F.relu(layer(r))
+            
+        
+        r = self.out(r)
+        
         
         return r
         
 class wgan_dis(nn.Module):
-    def __init__(self, num_of_output, gan_hidden_dim):
+    def __init__(self, num_of_output, layer, gan_hidden_dim):
         super(wgan_dis, self).__init__()
+        
+        self.layer = layer
+        
         self.fc1 = nn.Linear(num_of_output, gan_hidden_dim)
-        self.fc2 = nn.Linear(gan_hidden_dim, gan_hidden_dim)
-        self.fc3 = nn.Linear(gan_hidden_dim, 1)
+        
+        self.hidden = []
+        for k in range(self.layer):
+            self.hidden.append(nn.Linear(gan_hidden_dim, gan_hidden_dim))
+       
+        self.out = nn.Linear(gan_hidden_dim, 1)
         
     def forward(self, y, x):
-        dis_input = torch.cat((y, x), axis=1)
-        r = F.relu(self.fc1(dis_input))
-        r = F.relu(self.fc2(r))
-        #r = torch.sigmoid(self.fc3(r))
-        r = self.fc3(r)
+        r = self.fc1(torch.cat((y, x), axis=1))
+        
+        for layer in self.hidden:
+            r = F.relu(layer(r))
+        
+        r = torch.sigmoid(self.out(r))
         
         return r

@@ -65,21 +65,6 @@ def load_data_2(name, tr_num_in_cycle):
     reduced_Y_per_cycle = np.mean(reduced_splited_Y_all, axis=1)
 
     return reduced_X_all, reduced_Y_all, reduced_X_per_cycle, reduced_Y_per_cycle
-
-
-def load_data(name):
-    
-    data = np.load('./data_handler/'+name+'.npy', allow_pickle=True)
-    
-    X_all, Y_all, X_per_cycle, Y_per_cycle = data[0], data[1], data[2], data[3]
-    
-    print("============ Data load =============")
-    print("X data shape: ", X_all.shape, "X per cycle data shape:", X_per_cycle.shape)
-    print("Y data shape: ", Y_all.shape, "Y per cycle data shape:", Y_per_cycle.shape)  
-    print("any nan in X?: ", np.argwhere(np.isnan(X_all)))
-    print("any nan in Y?: ", np.argwhere(np.isnan(Y_all)))
-
-    return X_all, Y_all, X_per_cycle, Y_per_cycle
         
 def split_data(x, y, num_train, num_val):
     
@@ -120,44 +105,12 @@ class Dataset():
         self.val_Y_per_cycle = None
         self.test_Y_per_cycle = None
         
-        self.train_Y_mean= None
-        self.val_Y_mean = None
-        self.test_Y_mean = None
+        self.train_X_mean = None
+        self.train_X_std = None
         
-        self.train_Y_noise = None
-        self.val_Y_noise = None
-        self.test_Y_noise = None        
+        self.train_Y_mean = None
+        self.train_Y_std = None
         
-# class SEMI_gan_data(Dataset):
-#     def __init__(self, name, num_in_cycle, num_of_cycle, num_train, num_val):
-#         super().__init__(name)
-        
-#         # STEP 1: load data
-        
-#         X_all, Y_all, X_per_cycle, Y_per_cycle = load_data(name)
-        
-#         # STEP 2: Split data
-       
-#         self.train_X, self.train_Y, self.val_X, self.val_Y, self.test_X, self.test_Y = split_data(X_all, Y_all, num_train*num_in_cycle, num_val*num_in_cycle)
-#         self.train_X_per_cycle, self.train_Y_per_cycle, self.val_X_per_cycle, self.val_Y_per_cycle, self.test_X_per_cycle, self.test_Y_per_cycle = split_data(X_per_cycle, Y_per_cycle, num_train, num_val)
- 
-#         # OPTIONAL: Split data for Y_mean, Y_noise
-        
-#         self.train_Y_mean = np.repeat(self.train_Y_per_cycle, num_in_cycle, axis=0)
-#         self.val_Y_mean = np.repeat(self.val_Y_per_cycle, num_in_cycle, axis=0)
-#         self.test_Y_mean = np.repeat(self.test_Y_per_cycle, num_in_cycle, axis=0)
-                
-#         print("train_Y_mean shape", self.train_Y_mean.shape)
-#         print("val_Y_mean shape", self.val_Y_mean.shape)
-#         print("test_Y_mean shape", self.test_Y_mean.shape)
-        
-#         self.train_Y_noise = self.train_Y - self.train_Y_mean
-#         self.val_Y_noise = self.val_Y - self.val_Y_mean
-#         self.test_Y_noise = self.test_Y - self.test_Y_mean
-        
-#         print("train_Y_noise shape", self.train_Y_noise.shape)
-#         print("val_Y_noise shape", self.val_Y_noise.shape)
-#         print("test_Y_noise shape", self.test_Y_noise.shape)  
 
 class SEMI_gan_data(Dataset):
     def __init__(self, name, num_in_cycle, num_of_cycle, num_train, num_val):
@@ -167,28 +120,21 @@ class SEMI_gan_data(Dataset):
         
         X_all, Y_all, X_per_cycle, Y_per_cycle = load_data_2(name, num_in_cycle)
         
+        self.train_X_mean = np.mean(X_all, axis=0, dtype=np.float32)
+        self.train_X_std = np.std(X_all, axis=0, dtype=np.float32)
+        
+        self.train_Y_mean = np.mean(Y_all, axis=0, dtype=np.float32)
+        self.train_Y_std = np.std(Y_all, axis=0, dtype=np.float32)
+        
+        print("X mean :", train_X_mean)
+        print("X std :", train_X_std)
+        print("Y mean :", train_Y_mean)
+        print("Y std :", train_Y_std)
+        
         # STEP 2: Split data
 
         self.train_X, self.train_Y, self.val_X, self.val_Y, self.test_X, self.test_Y = split_data(X_all, Y_all, num_train*num_in_cycle, num_val*num_in_cycle)
         self.train_X_per_cycle, self.train_Y_per_cycle, self.val_X_per_cycle, self.val_Y_per_cycle, self.test_X_per_cycle, self.test_Y_per_cycle = split_data(X_per_cycle, Y_per_cycle, num_train, num_val)
-
-        # OPTIONAL: Split data for Y_mean, Y_noise
-        
-        self.train_Y_mean = np.repeat(self.train_Y_per_cycle, num_in_cycle, axis=0)
-        self.val_Y_mean = np.repeat(self.val_Y_per_cycle, num_in_cycle, axis=0)
-        self.test_Y_mean = np.repeat(self.test_Y_per_cycle, num_in_cycle, axis=0)
-                
-        print("train_Y_mean shape", self.train_Y_mean.shape)
-        print("val_Y_mean shape", self.val_Y_mean.shape)
-        print("test_Y_mean shape", self.test_Y_mean.shape)
-        
-        self.train_Y_noise = self.train_Y - self.train_Y_mean
-        self.val_Y_noise = self.val_Y - self.val_Y_mean
-        self.test_Y_noise = self.test_Y - self.test_Y_mean
-        
-        print("train_Y_noise shape", self.train_Y_noise.shape)
-        print("val_Y_noise shape", self.val_Y_noise.shape)
-        print("test_Y_noise shape", self.test_Y_noise.shape)  
         
         
 class SEMI_gaussian_data(Dataset):
@@ -198,6 +144,17 @@ class SEMI_gaussian_data(Dataset):
         # STEP 1: load data
         
         X_all, Y_all, X_per_cycle, Y_per_cycle, Y_mean_cov = load_data_3(name, num_in_cycle)
+        
+        self.train_X_mean = np.mean(X_all, axis=0, dtype=np.float32)
+        self.train_X_std = np.std(X_all, axis=0, dtype=np.float32)
+        
+        self.train_Y_mean = np.mean(Y_all, axis=0, dtype=np.float32)
+        self.train_Y_std = np.std(Y_all, axis=0, dtype=np.float32)
+        
+        print("X mean :", train_X_mean)
+        print("X std :", train_X_std)
+        print("Y mean :", train_Y_mean)
+        print("Y std :", train_Y_std)
         
         # STEP 2: Split data
 

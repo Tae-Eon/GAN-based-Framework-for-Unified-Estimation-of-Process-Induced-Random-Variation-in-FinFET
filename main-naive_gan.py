@@ -17,16 +17,13 @@ from torch.optim import lr_scheduler
 # Arguments
 args = get_args()
 
-log_name = 'naive_date_{}_data_{}_model_{}_{}_seed_{}_lr_{}_{}_{}_hidden_dim_{}_{}_batch_size_{}_noise_d_{}_sample_num_{}_tr_num_in_cycle_{}_layer_{}'.format(
+log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_size_{}_noise_d_{}_sample_num_{}_tr_num_in_cycle_{}_layer_{}'.format(
     args.date,
     args.dataset,
-    args.mean_model_type,
     args.gan_model_type,    
     args.seed,
-    args.mean_lr,  
     args.g_lr,      
     args.d_lr,        
-    args.mean_hidden_dim,
     args.gan_hidden_dim,
     args.batch_size,  
     args.noise_d,
