@@ -63,12 +63,10 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 ### 상수설정
-X_train_mean, X_train_std, Y_train_mean, Y_train_std = utils.train_mean_std(args, dataset.train_X, dataset.train_Y) #
 
-X_train_meancov_mean, X_train_meancov_std, Y_train_meancov_mean, Y_train_meancov_std = utils.train_mean_std(args, dataset.train_X_per_cycle, dataset.train_Y_mean_cov) # 6(mean)+21(cov) ####dataset 만
+X_train_meancov_mean, X_train_meancov_std, Y_train_meancov_mean, Y_train_meancov_std = utils.train_mean_std(args, dataset.train_X_per_cycle, dataset.train_Y_mean_cov) # 6(mean)+21(cov) 
 
-
-
+####dataset 만
 train_Y_min = np.min(dataset.train_Y, axis=0)
 train_Y_max = np.max(dataset.train_Y, axis=0)
 
@@ -122,7 +120,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
 
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=(args.gaussian_nepochs)/5, gamma=0.5)
 
-if args.model_type == 'mlp_gaussian':
+if args.trainer == 'mlp_gaussian':
     testType = 'gaussian'
 
 t_classifier = trainer.EvaluatorFactory.get_evaluator(args.sample_num, args.num_of_output, testType) #
@@ -173,7 +171,7 @@ val_real = dataset.val_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
 
 
-val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=Y_train_mean, train_std = Y_train_std, minmax=minmax, check=False) 
+val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
 # Test set
 mean_cov_result, total = t_classifier.mean_cov_sample(model, test_X_iterator)
@@ -191,7 +189,7 @@ print(num_of_cycle, num_in_cycle)
 test_total_result = test_total_result.reshape(num_of_cycle, args.sample_num, -1)
 test_real = dataset_test.test_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
-test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=Y_train_mean, train_std = Y_train_std, minmax=minmax, check=False) 
+test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
 result['validation sample'] = val_total_result
 result['validation EMD'] = val_EMD_score_list

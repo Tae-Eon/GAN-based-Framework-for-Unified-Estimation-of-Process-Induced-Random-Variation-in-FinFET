@@ -76,19 +76,10 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 ### 상수설정
 
-print(dataset.train_X)
-X_train_mean, X_train_std, Y_train_mean, Y_train_std = utils.train_mean_std(args, dataset.train_X, dataset.train_Y) #
-
 train_Y_min = np.min(dataset.train_Y, axis=0)
 train_Y_max = np.max(dataset.train_Y, axis=0)
 
 minmax = 'train_real_global'
-
-print("@@@@@@@debug@@@@@@@@", X_train_mean, X_train_std, Y_train_mean, Y_train_std)
-
-print(" Assign mean, std for Training data ")
-print("X train mean, std", X_train_mean, X_train_std) #
-print("Y train mean, std", Y_train_mean, Y_train_std) #
 
 print(" Y min, Y max for EMD ")
 print("Y min", train_Y_min) #
@@ -96,15 +87,15 @@ print("Y max", train_Y_max) #
 
 train_dataset_loader = data_handler.SemiLoader(args, dataset.train_X, 
                                                      dataset.train_Y, 
-                                                     X_train_mean, X_train_std, Y_train_mean, Y_train_std) #
+                                                     dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std) #
 
 val_dataset_loader = data_handler.SemiLoader(args, dataset.val_X_per_cycle, 
                                                     dataset.val_Y_per_cycle, 
-                                                    X_train_mean, X_train_std, Y_train_mean, Y_train_std)
+                                                    dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
 
 test_dataset_loader = data_handler.SemiLoader(args, dataset_test.test_X_per_cycle, 
                                                        dataset_test.test_Y_per_cycle, 
-                                                       X_train_mean, X_train_std, Y_train_mean, Y_train_std)
+                                                       dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
     
 
 
@@ -177,7 +168,7 @@ else:
 result = {}
 
 # Validation set
-val_total_result, val_total_num = t_classifier.sample(generator, Y_train_mean, Y_train_std, val_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
+val_total_result, val_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, val_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
 
 # val emd
 
@@ -187,10 +178,10 @@ print(num_of_cycle, num_in_cycle)
 val_total_result = val_total_result.reshape(num_of_cycle, args.sample_num, -1)
 val_real = dataset.val_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
-val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=Y_train_mean, train_std = Y_train_std, minmax=minmax, check=False) 
+val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
 # Test set
-test_total_result, test_total_num = t_classifier.sample(generator, Y_train_mean, Y_train_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
+test_total_result, test_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
 
 # test emd
 num_of_cycle = dataset_test.test_Y_per_cycle.shape[0]
@@ -200,7 +191,12 @@ print(num_of_cycle, num_in_cycle)
 test_total_result = test_total_result.reshape(num_of_cycle, args.sample_num, -1)
 test_real = dataset_test.test_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
-test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=Y_train_mean, train_std = Y_train_std, minmax=minmax, check=False) 
+test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
+
+result['X_mean'] = dataset.train_X_mean
+result['X_std'] = dataset.train_X_std
+result['Y_mean'] = dataset.train_Y_mean
+result['Y_std'] = dataset.train_Y_std
 
 result['validation sample'] = val_total_result
 result['validation EMD'] = val_EMD_score_list

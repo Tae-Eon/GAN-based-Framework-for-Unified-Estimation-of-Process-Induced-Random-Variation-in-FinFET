@@ -26,9 +26,6 @@ def get_args():
     parser.add_argument('--model_type', required=False, type=str,
                         choices=['linear_gaussian','mlp_gaussian'], 
                         help='(default=%(default)s)')
-    parser.add_argument('--mean_model_type', required=False, type=str,
-                        choices=['mlp', 'mlp_constant'], 
-                        help='(default=%(default)s)')
     parser.add_argument('--gan_model_type', default=False, type=str, required=False,
                         choices=['gan1', 'gan2', 'gan3', 'gan4', 'gan5', 'wgan', 'wgan2', 'wgan3', 'wgan4', 'gan6', 'ccgan'], 
                         help='(default=%(default)s)')
@@ -36,8 +33,6 @@ def get_args():
                         help='Seeds values to be used; seed introduces randomness by changing order of classes')
     parser.add_argument('--lr', type=float, default=5e-5,
                         help='learning rate for gaussian (default: 5e-5. Note that lr is decayed by args.gamma parameter args.schedule ')
-    parser.add_argument('--mean_lr', type=float, default=5e-5,
-                        help='learning rate (default: 5e-5. Note that mean_lr is decayed by args.gamma parameter args.schedule ')
     parser.add_argument('--g_lr', type=float, default=0.0001,
                         help='learning rate (default: 0.0001. Note that g_lr is decayed by args.gamma parameter args.schedule ')
     parser.add_argument('--d_lr', type=float, default=0.0005,

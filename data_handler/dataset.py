@@ -126,10 +126,10 @@ class SEMI_gan_data(Dataset):
         self.train_Y_mean = np.mean(Y_all, axis=0, dtype=np.float32)
         self.train_Y_std = np.std(Y_all, axis=0, dtype=np.float32)
         
-        print("X mean :", train_X_mean)
-        print("X std :", train_X_std)
-        print("Y mean :", train_Y_mean)
-        print("Y std :", train_Y_std)
+        print("X mean :", self.train_X_mean)
+        print("X std :", self.train_X_std)
+        print("Y mean :", self.train_Y_mean)
+        print("Y std :", self.train_Y_std)
         
         # STEP 2: Split data
 
@@ -151,10 +151,10 @@ class SEMI_gaussian_data(Dataset):
         self.train_Y_mean = np.mean(Y_all, axis=0, dtype=np.float32)
         self.train_Y_std = np.std(Y_all, axis=0, dtype=np.float32)
         
-        print("X mean :", train_X_mean)
-        print("X std :", train_X_std)
-        print("Y mean :", train_Y_mean)
-        print("Y std :", train_Y_std)
+        print("X mean :", self.train_X_mean)
+        print("X std :", self.train_X_std)
+        print("Y mean :", self.train_Y_mean)
+        print("Y std :", self.train_Y_std)
         
         # STEP 2: Split data
 
