@@ -75,4 +75,4 @@ class ModelFactory():
             layer = args.layer
             
             import networks.mlp_gaussian as gaussian
-            return gaussian.Net(num_of_hidden+one_hot, layer, num_of_input=num_of_input, num_of_output=num_of_output) # activation 함수가 없음
+            return gaussian.Net(num_of_hidden, layer, num_of_input=num_of_input+one_hot, num_of_output=num_of_output) # activation 함수가 없음

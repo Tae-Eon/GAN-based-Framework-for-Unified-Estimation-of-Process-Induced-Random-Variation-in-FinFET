@@ -113,16 +113,21 @@ class Dataset():
         
 
 class SEMI_gan_data(Dataset):
-    def __init__(self, name, num_in_cycle, num_of_cycle, num_train, num_val):
+    def __init__(self, name, one_hot, num_of_input, num_in_cycle, num_of_cycle, num_train, num_val):
         super().__init__(name)
         
         # STEP 1: load data
         
         X_all, Y_all, X_per_cycle, Y_per_cycle = load_data_2(name, num_in_cycle)
         
-        self.train_X_mean = np.mean(X_all, axis=0, dtype=np.float32)
-        self.train_X_std = np.std(X_all, axis=0, dtype=np.float32)
-        
+        if one_hot > 0:
+            self.train_X_mean = np.mean(X_all[:,:num_of_input], axis=0, dtype=np.float32)
+            self.train_X_std = np.std(X_all[:,:num_of_input], axis=0, dtype=np.float32)          
+            
+        else:
+            self.train_X_mean = np.mean(X_all, axis=0, dtype=np.float32)
+            self.train_X_std = np.std(X_all, axis=0, dtype=np.float32)
+
         self.train_Y_mean = np.mean(Y_all, axis=0, dtype=np.float32)
         self.train_Y_std = np.std(Y_all, axis=0, dtype=np.float32)
         
@@ -138,16 +143,21 @@ class SEMI_gan_data(Dataset):
         
         
 class SEMI_gaussian_data(Dataset):
-    def __init__(self, name, num_in_cycle, num_of_cycle, num_train, num_val):
+    def __init__(self, name, one_hot, num_of_input, num_in_cycle, num_of_cycle, num_train, num_val):
         super().__init__(name)
         
         # STEP 1: load data
         
         X_all, Y_all, X_per_cycle, Y_per_cycle, Y_mean_cov = load_data_3(name, num_in_cycle)
         
-        self.train_X_mean = np.mean(X_all, axis=0, dtype=np.float32)
-        self.train_X_std = np.std(X_all, axis=0, dtype=np.float32)
-        
+        if one_hot > 0:
+            self.train_X_mean = np.mean(X_all[:,:num_of_input], axis=0, dtype=np.float32)
+            self.train_X_std = np.std(X_all[:,:num_of_input], axis=0, dtype=np.float32)          
+            
+        else:
+            self.train_X_mean = np.mean(X_all, axis=0, dtype=np.float32)
+            self.train_X_std = np.std(X_all, axis=0, dtype=np.float32)        
+            
         self.train_Y_mean = np.mean(Y_all, axis=0, dtype=np.float32)
         self.train_Y_std = np.std(Y_all, axis=0, dtype=np.float32)
         
