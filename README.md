@@ -19,7 +19,7 @@
 - num_of_cycle : 10
 ```
 
-###2. RDFWFV
+### 2. RDFWFV
 (1) train : '2020_RDFWFV_20201222_V10.xlsx' (RDW&WFV, WFV, RDF)
 ```
 - input(4+2) : AGS, SDdoping, RCDdoping, RWpeak + onehot
@@ -35,7 +35,7 @@
 ```
 
 
-###3.LERRDFWFV
+### 3.LERRDFWFV
 (1) train : 'train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
 ```
 - input : amp, corrx, corry, NSD, NCH, AGS
