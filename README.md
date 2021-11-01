@@ -19,7 +19,6 @@
 - num_of_cycle : 10
 ```
 
-
 ###2. RDFWFV
 (1) train : '2020_RDFWFV_20201222_V10.xlsx' (RDW&WFV, WFV, RDF)
 ```
@@ -49,7 +48,7 @@
 - input:  amp, corrx, corry, NSD, NCH, AGS
 - num_in_cycle : 250
 - num_of_cycle : 4
-
+'''
 
 ***
 
