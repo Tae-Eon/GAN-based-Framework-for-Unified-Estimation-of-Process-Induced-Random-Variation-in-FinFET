@@ -48,7 +48,7 @@
 - input:  amp, corrx, corry, NSD, NCH, AGS
 - num_in_cycle : 250
 - num_of_cycle : 4
-'''
+```
 
 ***
 
