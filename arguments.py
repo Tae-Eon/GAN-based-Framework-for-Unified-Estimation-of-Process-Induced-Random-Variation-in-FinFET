@@ -9,7 +9,8 @@ def get_args():
                                  'wfv_train2020_RDFWFV_20201222_V10.xlsx',
                                  'rdf_train2020_RDFWFV_20201222_V10.xlsx',
                                  'rdfwfv_wfv_rdf_train2020_RDFWFV_20201222_V10.xlsx',
-                                 'train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
+                                 'train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx',
+                                 'updated_train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
                                  ],
                         help='(default=%(default)s)')
                                  
@@ -17,7 +18,8 @@ def get_args():
                         choices=['2020_LER_20201102_testset_V04.xlsx',
                                  'rdfwfv_wfv_rdf_test2020_RDFWFV_20201222_V10.xlsx',
                                  '2021_RDFWFV_20210107.xlsx',
-                                 'test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
+                                 'test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx',
+                                 'updated_test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
                                 ],
                         help='(default=%(default)s)')
     parser.add_argument('--trainer', type=str, required=True, 
