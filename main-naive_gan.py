@@ -31,10 +31,6 @@ log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_
     args.noise_d,
     args.sample_num, args.tr_num_in_cycle, args.layer
 )
-if args.gan_model_type=='ccgan':
-    log_name += '_kappa_'+str(args.kappa)+'_kernel_sigma_'+str(args.kernel_sigma)
-print('log_name :', log_name)
-
 
 utils.set_seed(args.seed)
 
@@ -52,8 +48,11 @@ if args.clipping is not None:
     gan_model_spec += '_clipping_{}'.format(args.clipping)
     log_name += '_clipping_{}'.format(args.clipping)
     
+if args.gan_model_type=='ccgan':
+    gan_model_spec += '_kappa_'+str(args.kappa)+'_kernel_sigma_'+str(args.kernel_sigma)
+    log_name += '_kappa_'+str(args.kappa)+'_kernel_sigma_'+str(args.kernel_sigma)
 
-print(log_name)
+print('log_name :', log_name)
 
 print("="*100)
 print("Arguments =")
