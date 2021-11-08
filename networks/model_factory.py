@@ -54,10 +54,13 @@ class ModelFactory():
             import networks.wgan2 as gan
             return gan.wgan_gen2(args.noise_d+num_of_input+one_hot, args.gan_hidden_dim, args.num_of_output), gan.wgan_dis2(args.num_of_output+num_of_input+one_hot, args.gan_hidden_dim, args.pdrop)
         
-        
         elif args.gan_model_type == 'wgan4':
             import networks.wgan4 as gan
             return gan.wgan_gen4(args.noise_d+num_of_input+one_hot, args.gan_hidden_dim, args.num_of_output), gan.wgan_dis4(args.num_of_output+num_of_input+one_hot, args.gan_hidden_dim, args.pdrop)
+        
+        elif args.gan_model_type == 'ccgan':
+            import networks.ccgan as gan
+            return gan.ccgen(args.noise_d+num_of_input+one_hot, layer, args.gan_hidden_dim, args.num_of_output), gan.ccdis(args.num_of_output+num_of_input+one_hot, layer, args.gan_hidden_dim)
                     
     def get_gaussian_model(args):
         

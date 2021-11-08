@@ -13,6 +13,8 @@ import os, time
 import scipy.io as sio
 from torch.optim import lr_scheduler
 
+utils.makedirs('models/discriminator')
+utils.makedirs('models/generator')
 
 # Arguments
 args = get_args()
@@ -29,6 +31,10 @@ log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_
     args.noise_d,
     args.sample_num, args.tr_num_in_cycle, args.layer
 )
+if args.gan_model_type=='ccgan':
+    log_name += '_kappa_'+str(args.kappa)+'_kernel_sigma_'+str(args.kernel_sigma)
+print('log_name :', log_name)
+
 
 utils.set_seed(args.seed)
 

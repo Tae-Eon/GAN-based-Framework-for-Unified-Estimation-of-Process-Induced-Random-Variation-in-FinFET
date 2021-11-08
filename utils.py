@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F    
 from scipy import linalg
 import random
+import os
     
     
 def train_mean_std(args, x, y):
@@ -99,3 +100,11 @@ def set_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+    
+    
+def makedirs(path): 
+    try: 
+        os.makedirs(path) 
+    except OSError: 
+        if not os.path.isdir(path): 
+            raise
