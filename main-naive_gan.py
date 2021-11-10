@@ -28,8 +28,7 @@ log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_
     args.gan_hidden_dim,
     args.batch_size,  
     args.noise_d,
-    args.sample_num, args.tr_num_in_cycle, args.layer,
-    args.result_path
+    args.sample_num, args.tr_num_in_cycle, args.layer
 )
 
 utils.set_seed(args.seed)
