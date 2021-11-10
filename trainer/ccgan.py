@@ -26,17 +26,28 @@ class GanTrainer(trainer.gan_GenericTrainer):
         self.G.train()
         self.D.train()
         
+        
         train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() #[:,:-3] ##LER+onehot
-        train_labels_sub = train_labels[:,:-self.one_hot]
-        train_labels_dummpy = train_labels[:,-self.one_hot:]
         train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ##random variation   
+        if self.one_hot != 0:  # RDF
+            train_labels_sub = train_labels[:,:-self.one_hot]
+            train_labels_dummpy = train_labels[:,-self.one_hot:]
         
-        num_of_output = train_labels_sub.shape[1]
-        max_x = torch.max(train_labels_sub, dim=0)[0]
-        min_x = torch.min(train_labels_sub, dim=0)[0]
         
-        min_max_normalized_train_labels_sub = (train_labels_sub - min_x)/(max_x - min_x)
-        min_max_normalized_train_labels = torch.cat([min_max_normalized_train_labels_sub, train_labels_dummpy], dim=1)
+        if self.one_hot == 0: # LER, LRW
+            num_of_output = train_labels.shape[1]
+            max_x = torch.max(train_labels, dim=0)[0]
+            min_x = torch.min(train_labels, dim=0)[0]
+            normalized_train_labels = (train_labels - min_x)/(max_x - min_x)
+            
+        else : # RDF
+            num_of_output = train_labels_sub.shape[1]
+            max_x = torch.max(train_labels_sub, dim=0)[0]
+            min_x = torch.min(train_labels_sub, dim=0)[0]
+            normalized_train_labels_sub = (train_labels_sub - min_x)/(max_x - min_x)
+            normalized_train_labels = torch.cat([normalized_train_labels_sub, train_labels_dummpy], dim=1)
+        
+        
         
         
         for i, data in enumerate(self.train_iterator):
@@ -49,18 +60,32 @@ class GanTrainer(trainer.gan_GenericTrainer):
             
             ############### ccgan data gathering
             batch_epsilons = torch.from_numpy(np.random.normal(0, self.kernel_sigma, mini_batch_size)).type(torch.float).cuda() ##iteration 마다 랜덤한 margin 선택
-            normalized_data_x = (data_x[:,:-self.one_hot] - min_x)/(max_x - min_x)
-            batch_target_labels_sub = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?)
-            batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
-            batch_fake_labels = torch.zeros_like(batch_target_labels_sub)
+            if self.one_hot == 0: # LER, LRW
+                normalized_data_x = (data_x - min_x)/(max_x - min_x)
+                normalized_batch_target_labels = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?)
+                batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
+                batch_fake_labels = torch.zeros_like(normalized_batch_target_labels)
+            else : # RDF
+                normalized_data_x = (data_x[:,:-self.one_hot] - min_x)/(max_x - min_x)
+                normalized_batch_target_labels_sub = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?)
+                batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
+                batch_fake_labels = torch.zeros_like(normalized_batch_target_labels_sub)
 
             
             #################################################
             for j in range(mini_batch_size):
                 if self.threshold_type == "hard":
-                    indx_real_in_vicinity = torch.where(torch.sum(torch.abs(min_max_normalized_train_labels_sub-batch_target_labels_sub[j]), dim=1) <= self.kappa)[0] ## hard margin
-                    if len(indx_real_in_vicinity)==0:
-                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(min_max_normalized_train_labels_sub-normalized_data_x[j]), dim=1) == 0)[0]
+                    if self.one_hot == 0 : # LER, LRW
+                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_batch_target_labels[j]), dim=1) <= self.kappa)[0] ## hard margin
+                        if len(indx_real_in_vicinity)==0:
+                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_data_x[j]), dim=1) == 0)[0]
+                        
+                    else : # RDF
+                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_batch_target_labels_sub[j]), dim=1) <= self.kappa)[0] ## hard margin
+                        if len(indx_real_in_vicinity)==0:
+                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_data_x[j]), dim=1) == 0)[0]
+                        
+                            
                 else:
                     raise "not implemented"
 
@@ -93,8 +118,11 @@ class GanTrainer(trainer.gan_GenericTrainer):
             batch_fake_samples = self.G(z, data_x) # unnormalized LER
 
             ## target labels on gpu
-            batch_target_labels_sub = batch_target_labels_sub*(max_x - min_x) + min_x
-            batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).type(torch.float).cuda() ## 요건 margin 고려헀을때 label (X에 대응되는 y_hat)
+            if self.one_hot == 0 :
+                batch_target_labels = normalized_batch_target_labels*(max_x - min_x) + min_x
+            else :
+                batch_target_labels_sub = normalized_batch_target_labels_sub*(max_x - min_x) + min_x
+                batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).type(torch.float).cuda() ## 요건 margin 고려헀을때 label (X에 대응되는 y_hat)
 
             ## weight vector
             if self.threshold_type == "soft":
@@ -118,11 +146,14 @@ class GanTrainer(trainer.gan_GenericTrainer):
             ############### GENERATOR
             
             batch_epsilons = torch.from_numpy(np.random.normal(0, self.kernel_sigma, mini_batch_size)).type(torch.float).cuda() ##iteration 마다 랜덤한 margin 선택
-            batch_target_labels_sub = (data_x[:,:-self.one_hot] - min_x)/(max_x - min_x) + batch_epsilons.view(-1,1) ## (normalize 해야함?)
-            #batch_target_labels_sub = torch.clamp(batch_target_labels_sub, 0.0, 1.0)
-            batch_target_labels_sub = batch_target_labels_sub*(max_x - min_x) + min_x  ## (unnormalized LER)
             
-            batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).cuda()
+            if self.one_hot == 0 :
+                normalized_batch_target_labels = (data_x - min_x)/(max_x - min_x) + batch_epsilons.view(-1,1) ## (normalized LER)
+                batch_target_labels = normalized_batch_target_labels*(max_x - min_x) + min_x  ## (unnormalized LER)
+            else :                                                                                                       
+                normalized_batch_target_labels_sub = (data_x[:,:-self.one_hot] - min_x)/(max_x - min_x) + batch_epsilons.view(-1,1) 
+                batch_target_labels_sub = normalized_batch_target_labels_sub*(max_x - min_x) + min_x  ## (unnormalized LER)
+                batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).cuda()
             
             z = utils.sample_z(mini_batch_size, self.noise_d).cuda()
             batch_fake_samples = self.G(z, batch_target_labels) ## unnormalized LER

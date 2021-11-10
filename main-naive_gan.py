@@ -136,7 +136,7 @@ optimizer_d = torch.optim.Adam(discriminator.parameters(), lr = args.d_lr)
 
 exp_gan_lr_scheduler = lr_scheduler.StepLR(optimizer_d, step_size=50, gamma=0.5)
 
-if args.gan_model_type == 'gan1' or 'wgan' or 'gan2' or 'gan3' or 'gan4' or 'wgan_gp':
+if args.gan_model_type == 'gan1' or 'wgan' or 'gan2' or 'gan3' or 'gan4' or 'wgan_gp' or 'ccgan':
     testType = 'naive_gan'
 
 print(testType)
