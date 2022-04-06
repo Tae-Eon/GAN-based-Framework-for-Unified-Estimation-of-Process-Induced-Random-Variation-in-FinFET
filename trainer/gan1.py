@@ -31,7 +31,7 @@ class GanTrainer(trainer.gan_GenericTrainer):
             # GENERATOR
             
             z = utils.sample_z(mini_batch_size, self.noise_d)
-            
+    
             gen_y = self.G(z, data_x)
             p_fake = self.D(gen_y, data_x)
             g_loss = -1*torch.log(p_fake).mean()

@@ -72,12 +72,13 @@ dataset_test = data_handler.DatasetFactory.get_test_dataset(args)
 # loss result
 kwargs = {'num_workers': args.workers}
 
-# print(torch.cuda.device_count())
-if torch.cuda.device_count() > 1:
-    print("Let's use", torch.cuda.device_count(), "GPUs!")
+#print(torch.cuda.device_count())
+print("GPU availiable: ", torch.cuda.is_available())
+print("Let's use", torch.cuda.device_count(), "GPUs!")
+
     
 print("Inits...")
-torch.set_default_tensor_type('torch.cuda.FloatTensor')
+#torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 
@@ -208,7 +209,7 @@ result['validation sample'] = val_total_result
 #result['validation EMD'] = val_EMD_score_list
 result['test sample'] = test_total_result
 #result['test EMD'] = test_EMD_score_list
-
+result['train time'] = t_end-t_start
 # # 3: num_of_input
 # # 6: num_of_output
     

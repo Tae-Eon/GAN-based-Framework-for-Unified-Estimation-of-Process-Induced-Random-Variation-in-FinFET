@@ -17,151 +17,140 @@ import sklearn
 from sklearn.metrics import r2_score
 import os
 import ot
+import pickle
 
 from sklearn import metrics
         
-# def FID_score(generated_samples, real_samples):
-#     # https://en.wikipedia.org/wiki/Sample_mean_and_covariance
-#     mu_g = np.mean(generated_samples, axis=0, keepdims=True).T
-#     mu_r = np.mean(real_samples, axis=0, keepdims=True).T
-#     cov_g = (generated_samples - np.ones((len(generated_samples),1)).dot(mu_g.T)).T.dot((generated_samples - np.ones((len(generated_samples),1)).dot(mu_g.T)))/(len(generated_samples)-1)
-#     cov_r = (real_samples - np.ones((len(real_samples),1)).dot(mu_r.T)).T.dot((real_samples - np.ones((len(real_samples),1)).dot(mu_r.T)))/(len(real_samples)-1)
+from matplotlib.patches import Ellipse
+import matplotlib.transforms as transforms
+from shapely.geometry import Polygon 
+from numpy import linalg as LA
 
-    
-#     mean_diff = mu_g - mu_r
-#     cov_prod_sqrt = linalg.sqrtm(cov_g.dot(cov_r))
-    
-#     #numerical instability of linalg.sqrtm
-#     #https://github.com/mseitzer/pytorch-fid/blob/master/pytorch_fid/fid_score.py
-#     eps=1e-6
-#     if not np.isfinite(cov_prod_sqrt).all():
-#         offset = np.eye(cov_g.shape[0]) * eps
-#         cov_prod_sqrt = linalg.sqrtm((cov_g + offset).dot(cov_r + offset))
+def confidence_ellipse_2(x, y, check, ax=None, n_std=3.0, facecolor='none', **kwargs):
+    """
+    Create a plot of the covariance confidence ellipse of *x* and *y*.
 
-#     if np.iscomplexobj(cov_prod_sqrt):
-#         if not np.allclose(np.diagonal(cov_prod_sqrt).imag, 0, atol=1e-3):
-#             m = np.max(np.abs(cov_prod_sqrt.imag))
-#             raise ValueError('Imaginary component {}'.format(m))
-#         cov_prod_sqrt = cov_prod_sqrt.real
-    
-    
-#     FID_score = np.sum(mean_diff**2) + np.trace(cov_g + cov_r -2*cov_prod_sqrt)
-    
-    
-#     return FID_score
+    Parameters
+    ----------
+    x, y : array-like, shape (n, )
+        Input data.
 
-# def FID_score_each_X(generated_samples, real_samples, num_in_gen, num_in_cycle):
-#     num_of_cycle = int(len(real_samples)/num_in_cycle)
-#     FID_score_list = []
-#     for i in range(num_of_cycle) :
-#         generated_samples_cycle = generated_samples[i*num_in_gen : (i+1)*num_in_gen]
-#         real_samples_cycle = real_samples[i*num_in_cycle : (i+1)*num_in_cycle]
-#         FID = FID_score(generated_samples_cycle, real_samples_cycle)
-#         FID_score_list.append(FID)
-#     return np.mean(np.array(FID_score_list)), FID_score_list
+    ax : matplotlib.axes.Axes
+        The axes object to draw the ellipse into.
 
+    n_std : float
+        The number of standard deviations to determine the ellipse's radiuses.
 
+    **kwargs
+        Forwarded to `~matplotlib.patches.Ellipse`
 
+    Returns
+    -------
+    matplotlib.patches.Ellipse
+    """
+    if x.size != y.size:
+        raise ValueError("x and y must be the same size")
 
-# def EMD_from_2d_kde_integral(normalized_generated_samples, normalized_real_samples, index_x, index_y, num_coordinate, normalized_x_min, normalized_x_max, normalized_y_min, normalized_y_max): #각 joint pair 별로 2d sample을 kde로 fittining시키고 얻은 pdf값을 weight로 삼아 histogram 만들어서 EMD
+    cov = np.cov(x, y)
+    egvalue, egvector = LA.eig(cov)
+    order = np.argsort(egvalue)[::-1]
 
-#     position_cartesian = np.array(np.meshgrid(np.linspace(normalized_x_min, normalized_x_max, num_coordinate), np.linspace(normalized_y_min, normalized_y_max, num_coordinate))).T.reshape(-1,2)
+    sorted_egvalue = egvalue[order]
+    sorted_egvector = egvector[:,order]
 
-#     normalized_real_samples_2d = normalized_real_samples[:,[index_x, index_y]]
-#     normalized_generated_samples_2d = normalized_generated_samples[:,[index_x, index_y]]
+    theta = np.degrees(np.arctan2(*sorted_egvector[:,0][::-1]))
 
-#     kde_real = stats.gaussian_kde(normalized_real_samples_2d.T, bw_method='silverman') # silverman
-#     kde_gen = stats.gaussian_kde(normalized_generated_samples_2d.T, bw_method='silverman')
+    x_mean = np.mean(x, axis=0)
+    y_mean = np.mean(y, axis=0)
 
-#     # Estimate distribution
-#     # density_real = kde_real(position_cartesian.T) #2by100 입력 -> 1by100 출력
-#     # density_gen = kde_gen(position_cartesian.T)
+    ellipse = Ellipse((x_mean, y_mean), width=2*n_std*np.sqrt(sorted_egvalue[0]), height=2*n_std*np.sqrt(sorted_egvalue[1]),
+                      facecolor=facecolor, angle=theta, **kwargs)
+    if check==True:
+        return ax.add_patch(ellipse), ellipse
+    else:
+        return ellipse
 
+def ellipsoid_2d_2(test_gen, test_real, test_emd_list, n_std, datatype, factor, model, check):
 
+    if datatype == "LER":
+        label = ['Ioff(Normalized)', 'Idsat(Normalized)', 'Idlin(Normalized)', 'Vtsat(Normalized)', 'Vtlin(Normalized)', 'SS(Normalized)']
+    elif datatype == "RDFWFV":
+        label = ['Ioff(Normalized)', 'Vtlin(Normalized)', 'Vtsat(Normalized)', 'Idlin(Normalized)', 'Idsat(Normalized)', 'SS(Normalized)']
+    elif datatype == "LERRDFWFV":
+        label = ['Ioff(Normalized)', 'Vtlin(Normalized)', 'Vtsat(Normalized)', 'Idlin(Normalized)', 'Idsat(Normalized)', 'SS(Normalized)']
+        
+    sample_num = test_gen.shape[0]
+    num_of_output = test_real.shape[1]
 
-#     # Estimate probability
-#     interval_x = (normalized_x_max - normalized_x_min)/(num_coordinate-1)
-#     interval_y = (normalized_y_max - normalized_y_min)/(num_coordinate-1)
-#     interval = np.array([interval_x, interval_y])
+    iou_list = []
 
-#     integral_real = np.zeros((num_coordinate**2, 1))
-#     integral_gen = np.zeros((num_coordinate**2, 1))
-#     for i in range(num_coordinate**2):
-#         integral_real[i] = kde_real.integrate_box(position_cartesian[i]-interval/2, position_cartesian[i]+interval/2)
-#         integral_gen[i] = kde_gen.integrate_box(position_cartesian[i]-interval/2, position_cartesian[i]+interval/2)
+    cnt = 6
+    for i in range(num_of_output):
+        for j in range(num_of_output):
+            if i < j :
 
-#     #clipping
-#     integral_real = np.maximum(integral_real,0)
-#     integral_gen = np.maximum(integral_gen,0)
+                min_x_axis = np.min(np.concatenate((test_gen[:,j], test_real[:,j])))
+                max_x_axis = np.max(np.concatenate((test_gen[:,j], test_real[:,j])))
 
+                min_y_axis = np.min(np.concatenate((test_gen[:,i], test_real[:,i])))
+                max_y_axis = np.max(np.concatenate((test_gen[:,i], test_real[:,i])))
 
-#     real_weight_position = np.concatenate((integral_real, position_cartesian),axis=1).astype('float32')
-#     gen_weight_position = np.concatenate((integral_gen, position_cartesian),axis=1).astype('float32')
+                ax_nstd = None
 
+                if check == True:
+                    fig, ax_nstd = plt.subplots(figsize=(6, 6))
+                    ax_nstd.axvline(c='grey', lw=1)
+                    ax_nstd.axhline(c='grey', lw=1)
 
-#     # Compare
-#     #KL_div = KL(density_real, density_gen)
-#     #print('KL_div', KL_div)
+                    ax_nstd.scatter(test_gen[:,j], test_gen[:,i], c='r')
+                    ax_nstd.scatter(test_real[:,j], test_real[:,i], c='b')
 
-#     EMD_score, _, flow = cv2.EMD(real_weight_position, gen_weight_position, cv2.DIST_L2)
+                    _, ellipse1 = confidence_ellipse_2(test_gen[:,j], test_gen[:,i], check, ax_nstd, n_std=n_std,label='generated', edgecolor='firebrick', linestyle='--')
+                    _, ellipse2 = confidence_ellipse_2(test_real[:,j], test_real[:,i], check, ax_nstd, n_std=n_std, label='real', edgecolor='blue', linestyle=':')
 
-#     return EMD_score
+                else:
+                    ellipse1 = confidence_ellipse_2(test_gen[:,j], test_gen[:,i], check, ax_nstd, n_std=n_std,label='generated', edgecolor='firebrick', linestyle='--')
+                    ellipse2 = confidence_ellipse_2(test_real[:,j], test_real[:,i], check, ax_nstd, n_std=n_std, label='real', edgecolor='blue', linestyle=':')
 
-# def EMD_from_1d_kde_integral(normalized_generated_samples, normalized_real_samples, index_x, num_coordinate, normalized_x_min, normalized_x_max): # 적분 weighting 버전
+                vertices1 = ellipse1.get_verts()
+                vertices2 = ellipse2.get_verts()
 
-#     position_cartesian = np.linspace(normalized_x_min, normalized_x_max, num_coordinate).reshape(-1,1)
+                ellipse1 = Polygon(vertices1)
+                ellipse2 = Polygon(vertices2)
 
-#     normalized_real_samples_1d = normalized_real_samples[:,[index_x]]
-#     normalized_generated_samples_1d = normalized_generated_samples[:,[index_x]]
+                intersect = ellipse1.intersection(ellipse2)
+                union = ellipse1.union(ellipse2)
 
-#     kde_real = stats.gaussian_kde(normalized_real_samples_1d.T, bw_method='silverman')
-#     kde_gen = stats.gaussian_kde(normalized_generated_samples_1d.T, bw_method='silverman')
+                area = intersect.area/union.area
+                iou_list.append(area)
 
-#     # Estimate distribution
-#     #density_real = kde_real(position_cartesian.T)
-#     #density_gen = kde_gen(position_cartesian.T)
+                if check == True:
+                    ax_nstd.set_title("[{}] data: {} #{} iou : {:.4f} emd : {:.4f}".format(model, datatype, factor, area, test_emd_list[cnt]))
+                    ax_nstd.set_xlim([min_x_axis-8, max_x_axis+8])
+                    ax_nstd.set_ylim([min_y_axis-8, max_y_axis+8])
+                    ax_nstd.set_xlabel(label[i])
+                    ax_nstd.set_ylabel(label[j])
+                    ax_nstd.legend()
+                    plt.show
 
+                cnt +=1
+    return np.array(iou_list)
 
-#     # Estimate probability
-#     interval = (normalized_x_max - normalized_x_min)/(num_coordinate-1)
-#     integral_real = np.zeros((num_coordinate,1))
-#     integral_gen = np.zeros((num_coordinate,1))
-#     for i in range(num_coordinate):
-#         integral_real[i] = kde_real.integrate_box_1d(position_cartesian[i]-interval/2, position_cartesian[i]+interval/2)
-#         integral_gen[i] = kde_gen.integrate_box_1d(position_cartesian[i]-interval/2, position_cartesian[i]+interval/2)
+def ellipsoid_iou(test_gen, test_real, test_emd_list, n_std, datatype, train_Y_mean, train_Y_std, model, check=False):
 
-#     #real_weight_position = np.concatenate((density_real.reshape(-1,1), position_cartesian),axis=1).astype('float32')
-#     #gen_weight_position = np.concatenate((density_gen.reshape(-1,1), position_cartesian),axis=1).astype('float32')
-#     real_weight_position = np.concatenate((integral_real, position_cartesian),axis=1).astype('float32')
-#     gen_weight_position = np.concatenate((integral_gen, position_cartesian),axis=1).astype('float32')
+    result = []
 
-#     # Compare
-#     #KL_div = KL(density_real, density_gen)
-#     #print('KL_div', KL_div)
+    test_gen = (test_gen-train_Y_mean)/train_Y_std
+    test_real = (test_real-train_Y_mean)/train_Y_std
 
-#     EMD_score, _, flow = cv2.EMD(real_weight_position, gen_weight_position, cv2.DIST_L2)
+    num_of_cycle = test_gen.shape[0]
+    sample_num = test_gen.shape[1]
 
-#     return EMD_score
+    for factor in range(num_of_cycle):
+        factor_iou = ellipsoid_2d_2(test_gen[factor], test_real[factor], test_emd_list[factor], 4.605, datatype, factor+1, model, check)
+        result.append(factor_iou)
 
-
-
-
-# def EMD_1d_2d_list_integral(normalized_generated_samples, normalized_real_samples, num_coordinate, noramlized_min_list, noramlized_max_list): #하나의 X에 대해, 모든 pair(36가지) EMD를 list로 뱉는 함수.
-
-#     dim = normalized_real_samples.shape[1]
-#     EMD_1d_score_list = []
-#     EMD_2d_score_list = []
-
-#     for i in range(dim):
-#         for j in range(dim):
-#             if i == j :
-#                 EMD_1d_score_list.append(EMD_from_1d_kde_integral(normalized_generated_samples, normalized_real_samples, i, num_coordinate, noramlized_min_list[i], noramlized_max_list[i]))
-#             elif i < j : 
-#                 EMD_2d_score_list.append(EMD_from_2d_kde_integral(normalized_generated_samples, normalized_real_samples, i, j, num_coordinate, noramlized_min_list[i], noramlized_max_list[i], noramlized_min_list[j], noramlized_max_list[j]))
-
-#     return np.array(EMD_1d_score_list), np.array(EMD_2d_score_list)
-
-
+    return np.array(result)
 
 def new_EMD_all_pair_each_X_integral(generated_samples, real_samples, real_bin_num, num_of_cycle, min_list, max_list, train_mean, train_std, minmax, check=False): #여러 X에 대해 각각 쪼개서, 모든 pair(36가지)에 대한 EMD list를 모아서 뱉는 함수.
     dim = real_samples.shape[1]
@@ -597,3 +586,77 @@ def mmd_poly(X, Y, degree=2, gamma=1, coef0=0):
     YY = metrics.pairwise.polynomial_kernel(Y, Y, degree, gamma, coef0)
     XY = metrics.pairwise.polynomial_kernel(X, Y, degree, gamma, coef0)
     return XX.mean() + YY.mean() - 2 * XY.mean()
+
+def load_samples_and_calculate_EMD(filepath, real_bin_num, minmax, real_samples, min_list, max_list, train_mean, train_std):
+    with (open(filepath, "rb")) as openfile:
+        result = pickle.load(openfile)
+    test_gen = result['test sample']
+    
+    num_of_cycle = test_gen.shape[0]
+    num_in_cycle = real_samples.shape[1]
+    test_gen_sample_num = test_gen.shape[1]
+
+    ###################### Calculate EMD ######################
+    try : 
+        aa = result['test EMD']
+    except :
+        test_EMD_score_list, test_sink_score_list = new_EMD_all_pair_each_X_integral(generated_samples = test_gen, real_samples = real_samples, real_bin_num=real_bin_num, num_of_cycle=num_of_cycle, min_list = min_list, max_list = max_list, train_mean=train_mean, train_std = train_std, minmax=minmax, check=False) 
+        
+        ###################### Add 'EMD value' to file #####################
+        result['test EMD'] = test_EMD_score_list
+        with (open(filepath, "wb")) as openfile:
+            pickle.dump(result, openfile)
+    
+    return result
+
+
+def load_samples_and_calculate_MMD(filepath, real_samples, min_list, max_list, gamma=100.0):
+    with (open(filepath, "rb")) as openfile:
+        result = pickle.load(openfile)
+    test_gen = result['test sample']
+    
+    num_of_cycle = test_gen.shape[0]
+    num_in_cycle = real_samples.shape[1]
+    test_gen_sample_num = test_gen.shape[1]
+    
+    ###################### Calculate MMD ######################
+    try :
+        aa = result['test MMD']
+    except :
+        test_MMD_score_list = []
+        for i in range(len(real_samples)):
+            test_gen_tmp = (test_gen[i] - min_list)/max_list
+            real_samples_tmp = (real_samples[i] - min_list)/max_list
+            test_MMD_score_list.append(mmd_rbf(test_gen_tmp, real_samples_tmp, gamma=gamma))    
+
+        ###################### Add 'MMD value' to file #####################
+        result['test MMD'] = np.array(test_MMD_score_list)
+        with (open(filepath, "wb")) as openfile:
+            pickle.dump(result, openfile)
+    
+    return result
+
+# result = ellipsoid_iou(test_gen, test_real, test_emd_list, 4.605, datatype, train_Y_mean, train_Y_std, model)
+
+def load_samples_and_calculate_iou(filepath, real_samples, datatype, train_Y_mean, train_Y_std, model):
+    with (open(filepath, "rb")) as openfile:
+        result = pickle.load(openfile)
+    test_gen = result['test sample']
+    test_emd_list = result['test EMD']
+    
+    num_of_cycle = test_gen.shape[0]
+    num_in_cycle = real_samples.shape[1]
+    test_gen_sample_num = test_gen.shape[1]
+    
+    ###################### Calculate MMD ######################
+    try :
+        aa = result['test IoU']
+    except :
+        iou_list = ellipsoid_iou(test_gen, real_samples, test_emd_list, 4.605, datatype, train_Y_mean, train_Y_std, model, check=False)
+
+        ###################### Add 'MMD value' to file #####################
+        result['test IoU'] = np.array(iou_list)
+        with (open(filepath, "wb")) as openfile:
+            pickle.dump(result, openfile)
+    
+    return result

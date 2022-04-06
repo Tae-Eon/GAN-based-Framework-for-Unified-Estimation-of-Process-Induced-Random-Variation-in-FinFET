@@ -61,6 +61,10 @@ class ModelFactory():
         elif args.gan_model_type == 'ccgan':
             import networks.ccgan as gan
             return gan.ccgen(args.noise_d+num_of_input+one_hot, layer, args.gan_hidden_dim, args.num_of_output), gan.ccdis(args.num_of_output+num_of_input+one_hot, layer, args.gan_hidden_dim)
+        
+#         elif args.gan_model_type == 'ccgan':
+#             import networks.ccgan as gan
+#             return gan.ccgen(args.noise_d,num_of_input+one_hot, layer, args.gan_hidden_dim, args.num_of_output), gan.ccdis(args.num_of_output,num_of_input+one_hot, layer, args.gan_hidden_dim)
                     
     def get_gaussian_model(args):
         

@@ -27,8 +27,8 @@ class GanTrainer(trainer.gan_GenericTrainer):
         self.D.train()
         
         
-        train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() #[:,:-3] ##LER+onehot
-        train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ##random variation   
+        train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() ## LER or RDF+onehot input 
+        train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ## random variation output
         if self.one_hot != 0:  # RDF
             train_labels_sub = train_labels[:,:-self.one_hot]
             train_labels_dummpy = train_labels[:,-self.one_hot:]
@@ -38,7 +38,7 @@ class GanTrainer(trainer.gan_GenericTrainer):
             num_of_output = train_labels.shape[1]
             max_x = torch.max(train_labels, dim=0)[0]
             min_x = torch.min(train_labels, dim=0)[0]
-            normalized_train_labels = (train_labels - min_x)/(max_x - min_x)
+            normalized_train_labels = (train_labels - min_x)/(max_x - min_x) ## dimension 별  scale
             
         else : # RDF
             num_of_output = train_labels_sub.shape[1]
@@ -62,7 +62,7 @@ class GanTrainer(trainer.gan_GenericTrainer):
             batch_epsilons = torch.from_numpy(np.random.normal(0, self.kernel_sigma, mini_batch_size)).type(torch.float).cuda() ##iteration 마다 랜덤한 margin 선택
             if self.one_hot == 0: # LER, LRW
                 normalized_data_x = (data_x - min_x)/(max_x - min_x)
-                normalized_batch_target_labels = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?)
+                normalized_batch_target_labels = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?) ## kernel_sigma가 0이면 그대로
                 batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
                 batch_fake_labels = torch.zeros_like(normalized_batch_target_labels)
             else : # RDF
@@ -76,15 +76,18 @@ class GanTrainer(trainer.gan_GenericTrainer):
             for j in range(mini_batch_size):
                 if self.threshold_type == "hard":
                     if self.one_hot == 0 : # LER, LRW
-                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_batch_target_labels[j]), dim=1) <= self.kappa)[0] ## hard margin
+                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_batch_target_labels[j]), dim=1) <= self.kappa * num_of_output)[0] ## hard margin
                         if len(indx_real_in_vicinity)==0:
-                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_data_x[j]), dim=1) == 0)[0]
-                        
+                            #indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_data_x[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 다양하게 다 쓰고 싶은데 똑같은거 쓰게 될듯 !
+                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_samples-data_y[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 그대로 쓰기 때문에 다양하게 다 쓸 가능성이 올라감(kappa, sigma가 0에 가까울수록 !)
+                            # 혹시 겹치는게 있다면, sample, label에 대해 && 활용도 가능
+                                                
                     else : # RDF
-                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_batch_target_labels_sub[j]), dim=1) <= self.kappa)[0] ## hard margin
+                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_batch_target_labels_sub[j]), dim=1) <= self.kappa * num_of_output)[0] ## search from perturbation (kappa = margin)
                         if len(indx_real_in_vicinity)==0:
-                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_data_x[j]), dim=1) == 0)[0]
-                        
+                            #indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_data_x[j]), dim=1) == 0)[0]
+                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_samples-data_y[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 그대로 쓰기 때문에 다양하게 다 쓸 가능성이 올라감(kappa, sigma가 0에 가까울수록 !)
+                            # 혹시 겹치는게 있다면, sample, label에 대해 && 활용도 가능
                             
                 else:
                     raise "not implemented"
