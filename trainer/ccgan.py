@@ -1,4 +1,4 @@
-#LER or LERRDFWFV
+#RDF
 from __future__ import print_function
 
 import networks
@@ -8,6 +8,7 @@ import utils
 import numpy as np
 import torch
 import torch.nn.functional as F
+import copy
 
 from tqdm import tqdm
 
@@ -25,46 +26,78 @@ class GanTrainer(trainer.gan_GenericTrainer):
         self.G.train()
         self.D.train()
         
-        train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() #[:,:-3] ##LER+onehot
-        train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ##random variation   
         
-        num_of_output = train_labels.shape[1]
-        max_x = torch.max(train_labels, dim=0)[0]
-        min_x = torch.min(train_labels, dim=0)[0]
+        train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() ## LER or RDF+onehot input 
+        train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ## random variation output
+        if self.one_hot != 0:  # RDF
+            train_labels_sub = train_labels[:,:-self.one_hot]
+            train_labels_dummpy = train_labels[:,-self.one_hot:]
         
-        normalized_train_labels = (train_labels - min_x)/(max_x - min_x)
+        
+        if self.one_hot == 0: # LER, LRW
+            num_of_output = train_labels.shape[1]
+            max_x = torch.max(train_labels, dim=0)[0]
+            min_x = torch.min(train_labels, dim=0)[0]
+            normalized_train_labels = (train_labels - min_x)/(max_x - min_x) ## dimension 별  scale
+            
+        else : # RDF
+            num_of_output = train_labels_sub.shape[1]
+            max_x = torch.max(train_labels_sub, dim=0)[0]
+            min_x = torch.min(train_labels_sub, dim=0)[0]
+            normalized_train_labels_sub = (train_labels_sub - min_x)/(max_x - min_x)
+            normalized_train_labels = torch.cat([normalized_train_labels_sub, train_labels_dummpy], dim=1)
+        
+        
         
         
         for i, data in enumerate(self.train_iterator):
+            #print('2.new_batch')
             data_x, data_y = data #unnormalized
             data_x, data_y = data_x.cuda(), data_y.cuda() #unnormalized? Gaussiannormalized?
+            batch_labels_dummpy = data_x[:,-self.one_hot:]#.cuda()
             
             mini_batch_size = len(data_x)
             
             ############### ccgan data gathering
             batch_epsilons = torch.from_numpy(np.random.normal(0, self.kernel_sigma, mini_batch_size)).type(torch.float).cuda() ##iteration 마다 랜덤한 margin 선택
-            normalized_data_x = (data_x - min_x)/(max_x - min_x)
-            normalized_batch_target_labels = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?)
-            batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
-            batch_fake_labels = torch.zeros_like(normalized_batch_target_labels)
+            if self.one_hot == 0: # LER, LRW
+                normalized_data_x = (data_x - min_x)/(max_x - min_x)
+                normalized_batch_target_labels = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?) ## kernel_sigma가 0이면 그대로
+                batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
+                batch_fake_labels = torch.zeros_like(normalized_batch_target_labels)
+            else : # RDF
+                normalized_data_x = (data_x[:,:-self.one_hot] - min_x)/(max_x - min_x)
+                normalized_batch_target_labels_sub = normalized_data_x + batch_epsilons.view(-1,1) ## (normalize 해야함?)
+                batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
+                batch_fake_labels = torch.zeros_like(normalized_batch_target_labels_sub)
 
             
             #################################################
             for j in range(mini_batch_size):
                 if self.threshold_type == "hard":
-                    indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_batch_target_labels[j]), dim=1) <= self.kappa)[0] ## hard margin
-                    if len(indx_real_in_vicinity)==0:
-                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_data_x[j]), dim=1) == 0)[0]
+                    if self.one_hot == 0 : # LER, LRW
+                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_batch_target_labels[j]), dim=1) <= self.kappa * num_of_output)[0] ## hard margin
+                        if len(indx_real_in_vicinity)==0:
+                            #indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_data_x[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 다양하게 다 쓰고 싶은데 똑같은거 쓰게 될듯 !
+                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_samples-data_y[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 그대로 쓰기 때문에 다양하게 다 쓸 가능성이 올라감(kappa, sigma가 0에 가까울수록 !)
+                            # 혹시 겹치는게 있다면, sample, label에 대해 && 활용도 가능
+                                                
+                    else : # RDF
+                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_batch_target_labels_sub[j]), dim=1) <= self.kappa * num_of_output)[0] ## search from perturbation (kappa = margin)
+                        if len(indx_real_in_vicinity)==0:
+                            #indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_data_x[j]), dim=1) == 0)[0]
+                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_samples-data_y[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 그대로 쓰기 때문에 다양하게 다 쓸 가능성이 올라감(kappa, sigma가 0에 가까울수록 !)
+                            # 혹시 겹치는게 있다면, sample, label에 대해 && 활용도 가능
+                            
                 else:
                     raise "not implemented"
 
                 assert len(indx_real_in_vicinity)>=1 # 만족을 하면 에러 안뜸
             
-                
                 selected_index = torch.randperm(indx_real_in_vicinity.size(0))[:1]
                 batch_real_indx[j] = indx_real_in_vicinity[selected_index]
                 #batch_real_indx[j] = torch.from_numpy(np.random.choice(indx_real_in_vicinity.cpu(), size=1)).type(torch.float) # 모은 셋에서 하나 뽑아서 X 바꾸기 -> iteration 별로 다르게 사용되니까.. 합리적, 
-                                                                                                                               # target은 ? iteration별로 uniform random하게 뽑음 -> imbalance 고려 안해도 됨
+                # target은 ? iteration별로 uniform random하게 뽑음 -> imbalance 고려 안해도 됨
                 
 
             #################################################
@@ -82,11 +115,17 @@ class GanTrainer(trainer.gan_GenericTrainer):
             
             
 #             batch_fake_labels = torch.cat((batch_fake_labels_sub, batch_labels_dummpy), dim=1).cuda()
-            z = torch.randn(mini_batch_size, self.noise_d, dtype=torch.float).cuda() ## noise
+            
+            
+            z = torch.randn(mini_batch_size, self.noise_d, dtype=torch.float).cuda() ## noise  
             batch_fake_samples = self.G(z, data_x) # unnormalized LER
 
             ## target labels on gpu
-            batch_target_labels = normalized_batch_target_labels*(max_x - min_x) + min_x
+            if self.one_hot == 0 :
+                batch_target_labels = normalized_batch_target_labels*(max_x - min_x) + min_x
+            else :
+                batch_target_labels_sub = normalized_batch_target_labels_sub*(max_x - min_x) + min_x
+                batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).type(torch.float).cuda() ## 요건 margin 고려헀을때 label (X에 대응되는 y_hat)
 
             ## weight vector
             if self.threshold_type == "soft":
@@ -97,8 +136,8 @@ class GanTrainer(trainer.gan_GenericTrainer):
             #end if threshold type
     
             # forward pass
-            p_real_D = self.D(batch_real_samples, batch_target_labels) ## feature # unnormalized LER
-            p_fake_D = self.D(batch_fake_samples, batch_target_labels) ## feature # unnormalized LER
+            p_real_D = self.D(batch_real_samples, batch_target_labels) ## feature # unnormalized
+            p_fake_D = self.D(batch_fake_samples, batch_target_labels) ## feature # unnormalized
 
             d_loss = - torch.mean(real_weights.view(-1) * torch.log(p_real_D.view(-1)+1e-20)) - torch.mean(fake_weights.view(-1) * torch.log(1 - p_fake_D.view(-1)+1e-20))
 
@@ -110,15 +149,21 @@ class GanTrainer(trainer.gan_GenericTrainer):
             ############### GENERATOR
             
             batch_epsilons = torch.from_numpy(np.random.normal(0, self.kernel_sigma, mini_batch_size)).type(torch.float).cuda() ##iteration 마다 랜덤한 margin 선택
-            normalized_batch_target_labels = (data_x - min_x)/(max_x - min_x) + batch_epsilons.view(-1,1) ## (normalized LER)
-            batch_target_labels = normalized_batch_target_labels*(max_x - min_x) + min_x  ## (unnormalized LER)
+            
+            if self.one_hot == 0 :
+                normalized_batch_target_labels = (data_x - min_x)/(max_x - min_x) + batch_epsilons.view(-1,1) ## (normalized LER)
+                batch_target_labels = normalized_batch_target_labels*(max_x - min_x) + min_x  ## (unnormalized LER)
+            else :                                                                                                       
+                normalized_batch_target_labels_sub = (data_x[:,:-self.one_hot] - min_x)/(max_x - min_x) + batch_epsilons.view(-1,1) 
+                batch_target_labels_sub = normalized_batch_target_labels_sub*(max_x - min_x) + min_x  ## (unnormalized LER)
+                batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).cuda()
             
             z = utils.sample_z(mini_batch_size, self.noise_d).cuda()
             batch_fake_samples = self.G(z, batch_target_labels) ## unnormalized LER
             
             
             # loss
-            p_fake = self.D(batch_fake_samples, batch_target_labels) ## unnormalized LER
+            p_fake = self.D(batch_fake_samples, batch_target_labels)
             g_loss = - torch.mean(torch.log(p_fake+1e-20))
 
             

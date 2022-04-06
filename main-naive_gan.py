@@ -13,8 +13,7 @@ import os, time
 import scipy.io as sio
 from torch.optim import lr_scheduler
 
-utils.makedirs('models/discriminator')
-utils.makedirs('models/generator')
+
 
 # Arguments
 args = get_args()
@@ -33,6 +32,9 @@ log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_
 )
 
 utils.set_seed(args.seed)
+utils.makedirs('models/discriminator')
+utils.makedirs('models/generator')
+utils.makedirs(args.result_path)
 
 # # Mean model architecture ( naming for training & sampling )
 # mean_model_spec = 'date_{}_data_{}_batch_{}_model_{}_lr_{}_tr_num_in_cycle_{}'.format(args.date, args.dataset, args.batch_size, args.mean_model_type, args.mean_lr, args.tr_num_in_cycle)
@@ -70,12 +72,13 @@ dataset_test = data_handler.DatasetFactory.get_test_dataset(args)
 # loss result
 kwargs = {'num_workers': args.workers}
 
-# print(torch.cuda.device_count())
-if torch.cuda.device_count() > 1:
-    print("Let's use", torch.cuda.device_count(), "GPUs!")
+#print(torch.cuda.device_count())
+print("GPU availiable: ", torch.cuda.is_available())
+print("Let's use", torch.cuda.device_count(), "GPUs!")
+
     
 print("Inits...")
-torch.set_default_tensor_type('torch.cuda.FloatTensor')
+#torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 
@@ -133,7 +136,7 @@ optimizer_d = torch.optim.Adam(discriminator.parameters(), lr = args.d_lr)
 
 exp_gan_lr_scheduler = lr_scheduler.StepLR(optimizer_d, step_size=50, gamma=0.5)
 
-if args.gan_model_type == 'gan1' or 'wgan' or 'gan2' or 'gan3' or 'gan4' or 'wgan_gp':
+if args.gan_model_type == 'gan1' or 'wgan' or 'gan2' or 'gan3' or 'gan4' or 'wgan_gp' or 'ccgan':
     testType = 'naive_gan'
 
 print(testType)
@@ -176,14 +179,13 @@ result = {}
 val_total_result, val_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, val_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
 
 # val emd
-
 num_of_cycle = dataset.val_Y_per_cycle.shape[0]
 num_in_cycle = int(dataset.val_Y.shape[0]/num_of_cycle)
 print(num_of_cycle, num_in_cycle)
 val_total_result = val_total_result.reshape(num_of_cycle, args.sample_num, -1)
 val_real = dataset.val_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
-val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
+# val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
 # Test set
 test_total_result, test_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
@@ -196,7 +198,7 @@ print(num_of_cycle, num_in_cycle)
 test_total_result = test_total_result.reshape(num_of_cycle, args.sample_num, -1)
 test_real = dataset_test.test_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
-test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
+# test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
 result['X_mean'] = dataset.train_X_mean
 result['X_std'] = dataset.train_X_std
@@ -204,13 +206,13 @@ result['Y_mean'] = dataset.train_Y_mean
 result['Y_std'] = dataset.train_Y_std
 
 result['validation sample'] = val_total_result
-result['validation EMD'] = val_EMD_score_list
+#result['validation EMD'] = val_EMD_score_list
 result['test sample'] = test_total_result
-result['test EMD'] = test_EMD_score_list
-
+#result['test EMD'] = test_EMD_score_list
+result['train time'] = t_end-t_start
 # # 3: num_of_input
 # # 6: num_of_output
     
-path = log_name + '.pkl'
-with open('sample_data/' + path, "wb") as f:
+file_name = log_name + '.pkl'
+with open(args.result_path + '/' + file_name, "wb") as f:
     pickle.dump(result, f)

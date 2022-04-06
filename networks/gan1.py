@@ -12,7 +12,7 @@ class gen1(nn.Module):
         
                
         self.fc1 = nn.Linear(d_noise_num_of_input, gan_hidden_dim)
-        self.hidden = []
+        self.hidden = nn.ModuleList()
         for k in range(self.layer):
             self.hidden.append(nn.Linear(gan_hidden_dim, gan_hidden_dim))
            
@@ -36,7 +36,7 @@ class dis1(nn.Module):
         
         self.fc1 = nn.Linear(num_of_output, gan_hidden_dim)
         
-        self.hidden = []
+        self.hidden = nn.ModuleList()
         for k in range(self.layer):
             self.hidden.append(nn.Linear(gan_hidden_dim, gan_hidden_dim))
        
