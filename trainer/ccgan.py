@@ -184,6 +184,7 @@ class GanTrainer(trainer.gan_GenericTrainer):
                 z = utils.sample_z(mini_batch_size, self.noise_d)
 
                 with torch.autograd.no_grad():
+
                     p_real += torch.sum(self.D(data_y, data_x)/mini_batch_size)
 
                     gen_y = self.G(z, data_x)
@@ -191,7 +192,6 @@ class GanTrainer(trainer.gan_GenericTrainer):
                     p_fake += torch.sum(self.D(gen_y, data_x)/mini_batch_size)
 
                 batch_num += 1
-
             p_real /= batch_num
             p_fake /= batch_num
             self.prob['p_real_val'].append(p_real)

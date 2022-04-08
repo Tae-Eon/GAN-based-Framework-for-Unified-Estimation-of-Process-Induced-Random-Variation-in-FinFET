@@ -60,7 +60,7 @@ if args.gan_model_type=='ccgan':
 print('log_name :', log_name)
 
 print("="*100)
-print("Arguments =")
+print("Arguments =") 
 for arg in vars(args):
     print('\t' + arg + ':', getattr(args, arg))
 print("="*100)
@@ -104,6 +104,10 @@ train_dataset_loader = data_handler.SemiLoader(args, dataset.train_X,
 #                                                     dataset.val_Y_per_cycle, 
 #                                                     dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
 
+test_eval_dataset_loader = data_handler.SemiLoader(args, dataset_test.test_X,
+                                                       dataset_test.test_Y,
+                                                       dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
+
 test_dataset_loader = data_handler.SemiLoader(args, dataset_test.test_X_per_cycle, 
                                                        dataset_test.test_Y_per_cycle, 
                                                        dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
@@ -115,6 +119,7 @@ test_dataset_loader = data_handler.SemiLoader(args, dataset_test.test_X_per_cycl
 train_iterator = torch.utils.data.DataLoader(train_dataset_loader, batch_size=args.batch_size, shuffle=True, **kwargs) #
 
 # val_iterator = torch.utils.data.DataLoader(val_dataset_loader, batch_size=1, shuffle=True, **kwargs)
+test_eval_iterator = torch.utils.data.DataLoader(test_eval_dataset_loader, batch_size=args.batch_size, shuffle=False)
 
 test_iterator = torch.utils.data.DataLoader(test_dataset_loader, batch_size=1, shuffle=False)
 
@@ -147,7 +152,7 @@ t_classifier = trainer.EvaluatorFactory.get_evaluator(args.sample_num, args.num_
 
 # trainer
 
-gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, test_iterator, generator, discriminator, args, optimizer_g, optimizer_d, exp_gan_lr_scheduler) #
+gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, test_eval_iterator, generator, discriminator, args, optimizer_g, optimizer_d, exp_gan_lr_scheduler) #
 
 # ====== TRAIN ======
 
