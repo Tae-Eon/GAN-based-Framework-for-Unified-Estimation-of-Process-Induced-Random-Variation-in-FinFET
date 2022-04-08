@@ -159,36 +159,40 @@ class GanTrainer(trainer.gan_GenericTrainer):
         
         return p_real_D, p_fake_D
                     
-    def evaluate(self):
-        
-        p_real, p_fake = 0., 0.
-        batch_num = 0
-        
-        self.G.eval()
-        self.D.eval()
-        
-        for i, data in enumerate(self.val_iterator):
-            
-            data_x, data_y = data
-            data_x, data_y = data_x.cuda(), data_y.cuda()
-            
-            mini_batch_size = len(data_x)
-            
-            z = utils.sample_z(mini_batch_size, self.noise_d)
-            
-            with torch.autograd.no_grad():
-                p_real += torch.sum(self.D(data_y, data_x)/mini_batch_size)
-                
-                gen_y = self.G(z, data_x)
-                
-                p_fake += torch.sum(self.D(gen_y, data_x)/mini_batch_size)
-                
-            batch_num += 1
-            
-        p_real /= batch_num
-        p_fake /= batch_num
-        
-        self.prob['p_real_val'].append(p_real)
-        self.prob['p_fake_val'].append(p_fake)
-        
-        return p_real, p_fake
+    def evaluate(self, mode):
+
+            if mode == 'train':
+                iterator = self.train_iterator
+            elif mode == 'test':
+                iterator = self.eval_iterator
+
+            p_real, p_fake = 0., 0.
+            batch_num = 0
+
+            self.G.eval()
+            self.D.eval()
+
+            for i, data in enumerate(iterator):
+
+                data_x, data_y = data
+                data_x, data_y = data_x.cuda(), data_y.cuda()
+
+                mini_batch_size = len(data_x)
+
+                z = utils.sample_z(mini_batch_size, self.noise_d)
+
+                with torch.autograd.no_grad():
+                    p_real += torch.sum(self.D(data_y, data_x)/mini_batch_size)
+
+                    gen_y = self.G(z, data_x)
+
+                    p_fake += torch.sum(self.D(gen_y, data_x)/mini_batch_size)
+
+                batch_num += 1
+
+            p_real /= batch_num
+            p_fake /= batch_num
+            self.prob['p_real_val'].append(p_real)
+            self.prob['p_fake_val'].append(p_fake)
+
+            return p_real, p_fake
