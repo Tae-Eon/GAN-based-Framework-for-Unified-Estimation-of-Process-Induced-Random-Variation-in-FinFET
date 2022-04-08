@@ -72,8 +72,6 @@ def get_args():
     parser.add_argument('--generator_path', type=str, default=None)
     parser.add_argument('--fix_discriminator', default=False, action='store_true', help='fix discriminator when action')
     parser.add_argument('--fix_generator', default=False, action='store_true', help='fix discriminator when action')
-    #parser.add_argument('--nonzero_soft_weight_threshold', type=float, default=1e-3,
-                        #help='threshold for determining nonzero weights for SVDL')
 
     
 
