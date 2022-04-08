@@ -18,23 +18,26 @@ class GanTrainer(trainer.gan_GenericTrainer):
         self.clipping = None
         
     def train(self):
-        print('fix_generator', fix_generator)
         p_real_list = []
         p_fake_list = []
         
         if self.fix_generator == True:
             self.G.eval()
-#             for param in self.G.parameters():
-#                 param.requires_grad = False
+            for param in self.G.parameters():
+                param.requires_grad = False
         else:
-            self.G.etrainval()
+            self.G.train()
+            for param in self.G.parameters():
+                param.requires_grad = True
         
-        
-        if self.fix_generator == True:
+        if self.fix_discriminator == True:
             self.D.eval()
+            for param in self.D.parameters():
+                param.requires_grad = False
         else:
             self.D.train()
-        
+            for param in self.D.parameters():
+                param.requires_grad = True
         
         train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() ## LER or RDF+onehot input 
         train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ## random variation output
@@ -59,13 +62,16 @@ class GanTrainer(trainer.gan_GenericTrainer):
         
         
         for i, data in enumerate(self.train_iterator):
-            data_x, data_y = data #unnormalized
-            data_x, data_y = data_x.cuda(), data_y.cuda() #unnormalized? Gaussiannormalized?
+            data_x, data_y = data
+            data_x, data_y = data_x.cuda(), data_y.cuda()
             batch_labels_dummpy = data_x[:,-self.one_hot:]#.cuda()
             
             mini_batch_size = len(data_x)
             
+            
+            
             ############### ccgan data gathering
+            
             batch_epsilons = torch.from_numpy(np.random.normal(0, self.kernel_sigma, mini_batch_size)).type(torch.float).cuda() ##iteration 마다 랜덤한 margin 선택
             if self.one_hot == 0: # LER, LRW
                 batch_target_labels = data_x + batch_epsilons.view(-1,1) ## kernel_sigma가 0이면 그대로
@@ -74,50 +80,49 @@ class GanTrainer(trainer.gan_GenericTrainer):
                 batch_target_labels_sub = data_x[:,:-self.one_hot] + batch_epsilons.view(-1,1)
                 batch_target_labels = torch.cat((batch_target_labels_sub, batch_labels_dummpy), dim=1).cuda()
                 batch_real_indx = torch.zeros(mini_batch_size, dtype=int)
-
+                
             
             #################################################
+            batch_real_samples = copy.deepcopy(data_y).cuda()
             for j in range(mini_batch_size):
+#                 print('')
+#                 print('before', batch_real_samples[j])
                 if self.threshold_type == "hard":
                     if self.one_hot == 0 : # LER, LRW
-                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_labels-batch_target_labels[j]), dim=1) <= self.kappa * num_of_output)[0] ## hard margin
-                        if len(indx_real_in_vicinity)==0:
-                            #indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels-normalized_data_x[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 다양하게 다 쓰고 싶은데 똑같은거 쓰게 될듯 !
-                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_samples-data_y[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 그대로 쓰기 때문에 다양하게 다 쓸 가능성이 올라감(kappa, sigma가 0에 가까울수록 !)
-                            # 혹시 겹치는게 있다면, sample, label에 대해 && 활용도 가능
+                        
+                        distance = torch.sum(torch.abs(train_labels-batch_target_labels[j]), dim=1)
+                        #indx_real_in_vicinity = torch.where( (distance>0.00001) * (distance <= self.kappa * num_of_output) )[0]
+                        indx_real_in_vicinity = torch.where( (distance <= self.kappa * num_of_output) )[0]
+                        #print('indx_real_in_vicinity',indx_real_in_vicinity)
+                        if len(indx_real_in_vicinity)!=0:
+                            selected_index = torch.argmin(distance + 0.000001*torch.randn(len(distance)).cuda())
+                            print('selected_index',selected_index)
+                            batch_real_samples[j] = train_samples[selected_index]
                                                 
                     else : # RDF
-                        indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_labels_sub-batch_target_labels_sub[j]), dim=1) <= self.kappa * num_of_output)[0] ## search from perturbation (kappa = margin)
-                        if len(indx_real_in_vicinity)==0:
-                            #indx_real_in_vicinity = torch.where(torch.sum(torch.abs(normalized_train_labels_sub-normalized_data_x[j]), dim=1) == 0)[0]
-                            indx_real_in_vicinity = torch.where(torch.sum(torch.abs(train_samples-data_y[j]), dim=1) == 0)[0] ## 못찾으면 r.v 데이터 그대로 쓰기 때문에 다양하게 다 쓸 가능성이 올라감(kappa, sigma가 0에 가까울수록 !)
-                            # 혹시 겹치는게 있다면, sample, label에 대해 && 활용도 가능
-                            
+                        distance = torch.sum(torch.abs(train_labels_sub-batch_target_labels_sub[j]), dim=1)
+                        indx_real_in_vicinity = torch.where( (distance>0.00001) * (distance <= self.kappa * num_of_output) )[0]
+                        if len(indx_real_in_vicinity)!=0:
+                            selected_index = torch.argmin(distance + 0.000001*torch.randn(len(distance)).cuda())
+                            batch_real_samples[j] = train_samples[selected_index]
+            
                 else:
                     raise "not implemented"
-
-                assert len(indx_real_in_vicinity)>=1 # 만족을 하면 에러 안뜸
-            
-                selected_index = torch.randperm(indx_real_in_vicinity.size(0))[:1]
-                batch_real_indx[j] = indx_real_in_vicinity[selected_index]
-                #batch_real_indx[j] = torch.from_numpy(np.random.choice(indx_real_in_vicinity.cpu(), size=1)).type(torch.float) # 모은 셋에서 하나 뽑아서 X 바꾸기 -> iteration 별로 다르게 사용되니까.. 합리적, 
-                # target은 ? iteration별로 uniform random하게 뽑음 -> imbalance 고려 안해도 됨
                 
-
+#                 print('after ', batch_real_samples[j])
+#                 print('')
+   
             #################################################
-            
-            
-            ## draw the real image batch from the training set
-            batch_real_samples = train_samples[batch_real_indx].cuda() ## index로 부터 X 가져오기
-            batch_real_labels = train_labels[batch_real_indx].cuda() ## index에 대응되는 true label y 가져오기
+        
+
 
             ## generate the fake image batch
-            z = torch.randn(mini_batch_size, self.noise_d, dtype=torch.float).cuda() ## noise  
-            batch_fake_samples = self.G(z, data_x) # unnormalized LER
+            z = torch.randn(mini_batch_size, self.noise_d, dtype=torch.float).cuda()
+            batch_fake_samples = self.G(z, data_x)
 
             # forward pass
-            p_real_D = self.D(batch_real_samples, batch_target_labels) ## feature # unnormalized
-            p_fake_D = self.D(batch_fake_samples, batch_target_labels) ## feature # unnormalized
+            p_real_D = self.D(batch_real_samples, batch_target_labels)
+            p_fake_D = self.D(batch_fake_samples, batch_target_labels)
 
             d_loss = - torch.mean(torch.log(p_real_D.view(-1)+1e-20)) - torch.mean(torch.log(1 - p_fake_D.view(-1)+1e-20))
 

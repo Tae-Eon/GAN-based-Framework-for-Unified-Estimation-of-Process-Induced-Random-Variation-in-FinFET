@@ -3,28 +3,31 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+    
 class gen1(nn.Module):
     def __init__(self, d_noise_num_of_input, layer, gan_hidden_dim, num_of_output):
         super(gen1, self).__init__()
+                       
+        self.network = nn.ModuleList([])
+
+        hidden_dims = [ gan_hidden_dim for i in range(layer-1) ]
         
-        self.layer = layer
-        print('layer', self.layer)
+        # linear model
+        if layer == 1:
+            self.network.append(nn.Linear(d_noise_num_of_input, num_of_output))
+        # multi layer model
+        else:
+            for h_dim in hidden_dims:
+                self.network.append(nn.Linear(d_noise_num_of_input, h_dim))
+                self.network.append(nn.ReLU(h_dim))
+                d_noise_num_of_input = h_dim
+            self.network.append(nn.Linear(d_noise_num_of_input, num_of_output))
         
-               
-        self.fc1 = nn.Linear(d_noise_num_of_input, gan_hidden_dim)
-        self.hidden = nn.ModuleList()
-        for k in range(self.layer):
-            self.hidden.append(nn.Linear(gan_hidden_dim, gan_hidden_dim))
-           
-        self.out = nn.Linear(gan_hidden_dim, num_of_output)
         
     def forward(self, noise, x):
-        r = self.fc1(torch.cat((noise, x), axis=1))
-        for layer in self.hidden:
-            r = F.relu(layer(r))
-            
-        
-        r = self.out(r)
+        r = torch.cat((noise, x), axis=1)
+        for module in self.network:
+            r = module(r)
         
         return r
         
@@ -32,23 +35,27 @@ class dis1(nn.Module):
     def __init__(self, num_of_output, layer, gan_hidden_dim):
         super(dis1, self).__init__()
         
-        self.layer = layer
+        self.network = nn.ModuleList([])
+        hidden_dims = [ gan_hidden_dim for i in range(layer-1) ]
         
-        self.fc1 = nn.Linear(num_of_output, gan_hidden_dim)
+        # linear model
+        if layer == 1:
+            self.network.append(nn.Linear(num_of_output, 1))
+        # multi layer model
+        else:
+            for h_dim in hidden_dims:
+                self.network.append(nn.Linear(num_of_output, h_dim))
+                self.network.append(nn.ReLU(h_dim))
+                num_of_output = h_dim
+            # last layer
+            self.network.append(nn.Linear(num_of_output,1))
         
-        self.hidden = nn.ModuleList()
-        for k in range(self.layer):
-            self.hidden.append(nn.Linear(gan_hidden_dim, gan_hidden_dim))
-       
-        self.out = nn.Linear(gan_hidden_dim, 1)
-        
+              
     def forward(self, y, x):
-        r = self.fc1(torch.cat((y, x), axis=1))
         
-        for layer in self.hidden:
-            r = F.relu(layer(r))
-        
-        r = torch.sigmoid(self.out(r))
-        
+        r = torch.cat((y, x), axis=1)
+        for module in self.network:
+            r = module(r)
+        r = torch.sigmoid(r)
         
         return r
