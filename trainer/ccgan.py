@@ -123,7 +123,8 @@ class GanTrainer(trainer.gan_GenericTrainer):
             d_loss = - torch.mean(torch.log(p_real_D.view(-1)+1e-20)) - torch.mean(torch.log(1 - p_fake_D.view(-1)+1e-20))
 
             self.optimizer_D.zero_grad()
-            d_loss.backward()
+            if self.fix_discriminator == False:
+                d_loss.backward()
             self.optimizer_D.step()
             
             
@@ -146,7 +147,8 @@ class GanTrainer(trainer.gan_GenericTrainer):
 
             
             self.optimizer_G.zero_grad()
-            g_loss.backward()
+            if self.fix_generator == False:
+                g_loss.backward()
             self.optimizer_G.step()
             
             
