@@ -17,6 +17,7 @@ from torch.optim import lr_scheduler
 
 # Arguments
 args = get_args()
+print('args',args)
 result = {}
 result['train_prob'] = []
 result['test_prob'] = []
@@ -151,7 +152,6 @@ print(testType)
 t_classifier = trainer.EvaluatorFactory.get_evaluator(args.sample_num, args.num_of_output, testType)
 
 # trainer
-
 gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, test_eval_iterator, generator, discriminator, args, optimizer_g, optimizer_d, exp_gan_lr_scheduler) #
 
 # ====== TRAIN ======
