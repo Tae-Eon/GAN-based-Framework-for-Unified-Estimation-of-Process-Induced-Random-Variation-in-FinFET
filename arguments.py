@@ -1,6 +1,6 @@
 import argparse
 
-def get_args():
+def get_args(): 
     parser = argparse.ArgumentParser(description='SEMI')
     parser.add_argument('--date', type=str, default='', help='(default=%(default)s)')
     parser.add_argument('--dataset', default='2020_LER_20201008_V008.xlsx', type=str,
