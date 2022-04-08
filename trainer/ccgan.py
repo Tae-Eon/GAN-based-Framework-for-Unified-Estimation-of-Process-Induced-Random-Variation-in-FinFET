@@ -41,7 +41,6 @@ class GanTrainer(trainer.gan_GenericTrainer):
                 
         train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() ## LER or RDF+onehot input 
         train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ## random variation output
-        
 
         
         if self.one_hot == 0: # LER, LRW
