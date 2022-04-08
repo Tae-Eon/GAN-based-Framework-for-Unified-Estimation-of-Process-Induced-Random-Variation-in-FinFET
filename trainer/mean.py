@@ -12,8 +12,8 @@ from tqdm import tqdm
 import copy
 
 class MeanTrainer(trainer.mean_GenericTrainer):
-    def __init__(self, train_iterator, val_iterator, mean_model, optimizer, exp_lr_scheduler):
-        super().__init__(train_iterator, val_iterator, mean_model, optimizer, exp_lr_scheduler)
+    def __init__(self, train_iterator, eval_iterator, mean_model, optimizer, exp_lr_scheduler):
+        super().__init__(train_iterator, eval_iterator, mean_model, optimizer, exp_lr_scheduler)
             
         self.best_loss = np.inf
         self.best_model = None
@@ -60,7 +60,7 @@ class MeanTrainer(trainer.mean_GenericTrainer):
         pred_arr = []
         
         with torch.no_grad():
-            for i, data in enumerate(self.val_iterator):
+            for i, data in enumerate(self.eval_iterator):
                 data_x, data_y = data
                 data_x, data_y = data_x.cuda(), data_y.cuda()
                 

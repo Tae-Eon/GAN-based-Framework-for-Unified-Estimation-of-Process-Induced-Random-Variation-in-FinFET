@@ -11,8 +11,8 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 class GanTrainer(trainer.gan_GenericTrainer):
-    def __init__(self, noise_trainer_iterator, noise_val_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, noise_d):
-        super().__init__(noise_trainer_iterator, noise_val_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, noise_d)
+    def __init__(self, train_iterator, eval_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, noise_d):
+        super().__init__(train_iterator, eval_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, noise_d)
                 
     def train(self):
         
@@ -70,7 +70,12 @@ class GanTrainer(trainer.gan_GenericTrainer):
         
         return p_real, p_fake
                     
-    def evaluate(self):
+    def evaluate(self, mode):
+        
+        if mode == 'train':
+            iterator = self.train_iterator
+        elif mode == 'test':
+            iterator = self.eval_iterator
         
         p_real, p_fake = 0., 0.
         batch_num = 0
@@ -78,7 +83,7 @@ class GanTrainer(trainer.gan_GenericTrainer):
         self.G.eval()
         self.D.eval()
         
-        for i, data in enumerate(self.val_iterator):
+        for i, data in enumerate(iterator):
             
             data_x, data_y = data
             data_x, data_y = data_x.cuda(), data_y.cuda()
@@ -98,8 +103,5 @@ class GanTrainer(trainer.gan_GenericTrainer):
             
         p_real /= batch_num
         p_fake /= batch_num
-        
-        self.prob['p_real_val'].append(p_real)
-        self.prob['p_fake_val'].append(p_fake)
         
         return p_real, p_fake

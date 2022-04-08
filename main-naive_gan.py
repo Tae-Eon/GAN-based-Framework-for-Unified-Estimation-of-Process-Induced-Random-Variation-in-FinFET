@@ -17,6 +17,9 @@ from torch.optim import lr_scheduler
 
 # Arguments
 args = get_args()
+result = {}
+result['train_prob'] = []
+result['test_prob'] = []
 
 log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_size_{}_noise_d_{}_sample_num_{}_tr_num_in_cycle_{}_layer_{}'.format(
     args.date,
@@ -97,9 +100,9 @@ train_dataset_loader = data_handler.SemiLoader(args, dataset.train_X,
                                                      dataset.train_Y, 
                                                      dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std) #
 
-val_dataset_loader = data_handler.SemiLoader(args, dataset.val_X_per_cycle, 
-                                                    dataset.val_Y_per_cycle, 
-                                                    dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
+# val_dataset_loader = data_handler.SemiLoader(args, dataset.val_X_per_cycle, 
+#                                                     dataset.val_Y_per_cycle, 
+#                                                     dataset.train_X_mean, dataset.train_X_std, dataset.train_Y_mean, dataset.train_Y_std)
 
 test_dataset_loader = data_handler.SemiLoader(args, dataset_test.test_X_per_cycle, 
                                                        dataset_test.test_Y_per_cycle, 
@@ -111,7 +114,7 @@ test_dataset_loader = data_handler.SemiLoader(args, dataset_test.test_X_per_cycl
 
 train_iterator = torch.utils.data.DataLoader(train_dataset_loader, batch_size=args.batch_size, shuffle=True, **kwargs) #
 
-val_iterator = torch.utils.data.DataLoader(val_dataset_loader, batch_size=1, shuffle=True, **kwargs)
+# val_iterator = torch.utils.data.DataLoader(val_dataset_loader, batch_size=1, shuffle=True, **kwargs)
 
 test_iterator = torch.utils.data.DataLoader(test_dataset_loader, batch_size=1, shuffle=False)
 
@@ -136,7 +139,7 @@ optimizer_d = torch.optim.Adam(discriminator.parameters(), lr = args.d_lr)
 
 exp_gan_lr_scheduler = lr_scheduler.StepLR(optimizer_d, step_size=50, gamma=0.5)
 
-if args.gan_model_type == 'gan1' or 'wgan' or 'gan2' or 'gan3' or 'gan4' or 'wgan_gp' or 'ccgan':
+if args.gan_model_type == 'gan1' or 'ccgan':
     testType = 'naive_gan'
 
 print(testType)
@@ -144,7 +147,7 @@ t_classifier = trainer.EvaluatorFactory.get_evaluator(args.sample_num, args.num_
 
 # trainer
 
-gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, val_iterator, generator, discriminator, args, optimizer_g, optimizer_d, exp_gan_lr_scheduler) #
+gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, test_iterator, generator, discriminator, args, optimizer_g, optimizer_d, exp_gan_lr_scheduler) #
 
 # ====== TRAIN ======
 
@@ -160,11 +163,15 @@ if args.mode == 'train' :
     for epoch in range(args.gan_nepochs):
 
         gan_mytrainer.train()
-        p_real, p_fake = gan_mytrainer.evaluate()
+        tr_p_real, tr_p_fake = gan_mytrainer.evaluate(mode='train')
+        t_p_real, t_p_fake = gan_mytrainer.evaluate(mode='test')
         current_d_lr = gan_mytrainer.current_d_lr
 
         if((epoch+1)% 10 == 0):
-            print("epoch:{:2d}, lr_d:{:.6f}, || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, p_real, p_fake))
+            print("epoch:{:2d}, lr_d:{:.6f}, || train || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, tr_p_real, tr_p_fake))
+            print("epoch:{:2d}, lr_d:{:.6f}, || test || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, t_p_real, t_p_fake))
+            result['train_prob'].append((tr_p_real, tr_p_fake))
+            result['test_prob'].append((t_p_real, t_p_fake))
             
     t_end = time.time()
     # net.state_dict()
@@ -178,17 +185,16 @@ else:
 
 
 # ====== EVAL ======
-result = {}
 
 # Validation set
-val_total_result, val_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, val_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
+# val_total_result, val_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, val_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
 
 # val emd
-num_of_cycle = dataset.val_Y_per_cycle.shape[0]
-num_in_cycle = int(dataset.val_Y.shape[0]/num_of_cycle)
-print(num_of_cycle, num_in_cycle)
-val_total_result = val_total_result.reshape(num_of_cycle, args.sample_num, -1)
-val_real = dataset.val_Y.reshape(num_of_cycle, num_in_cycle, -1)
+# num_of_cycle = dataset.val_Y_per_cycle.shape[0]
+# num_in_cycle = int(dataset.val_Y.shape[0]/num_of_cycle)
+# print(num_of_cycle, num_in_cycle)
+# val_total_result = val_total_result.reshape(num_of_cycle, args.sample_num, -1)
+# val_real = dataset.val_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
 # val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
@@ -210,7 +216,7 @@ result['X_std'] = dataset.train_X_std
 result['Y_mean'] = dataset.train_Y_mean
 result['Y_std'] = dataset.train_Y_std
 
-result['validation sample'] = val_total_result
+# result['validation sample'] = val_total_result
 #result['validation EMD'] = val_EMD_score_list
 result['test sample'] = test_total_result
 #result['test EMD'] = test_EMD_score_list

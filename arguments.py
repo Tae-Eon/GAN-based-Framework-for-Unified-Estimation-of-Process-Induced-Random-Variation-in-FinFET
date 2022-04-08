@@ -31,7 +31,7 @@ def get_args():
                         choices=['linear_gaussian','mlp_gaussian'], 
                         help='(default=%(default)s)')
     parser.add_argument('--gan_model_type', default=False, type=str, required=False,
-                        choices=['gan1', 'gan2', 'gan3', 'gan4', 'gan5', 'wgan', 'wgan2', 'wgan3', 'wgan4', 'gan6', 'ccgan'], 
+                        choices=['gan1', 'ccgan'], 
                         help='(default=%(default)s)')
     parser.add_argument('--seed', type=int, default=0,
                         help='Seeds values to be used; seed introduces randomness by changing order of classes')
@@ -50,7 +50,7 @@ def get_args():
     parser.add_argument('--mean_nepochs', type=int, default=1000, help='Number of epochs for each mean increment')
     parser.add_argument('--gan_nepochs', type=int, default=200, help='Number of epochs for each gan increment')    
     parser.add_argument('--workers', type=int, default=0, help='Number of workers in Dataloaders')
-    parser.add_argument('--num_of_input', type=int, default=5, help='Number of input for data')
+    parser.add_argument('--num_of_input', type=int, required=True, help='Number of input for data')
     parser.add_argument('--num_of_output', type=int, default=6, help='Number of output for data')
     parser.add_argument('--sample_num', type=int, default=50, help='sampling number')
     parser.add_argument('--pdrop', type=float, default=None, help='dropout rate')
