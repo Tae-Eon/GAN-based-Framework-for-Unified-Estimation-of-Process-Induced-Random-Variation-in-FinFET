@@ -148,7 +148,12 @@ gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, val_itera
 
 # ====== TRAIN ======
 
-if args.mode == 'train' and not os.path.isfile('./models/generator/'+gan_model_spec):
+if args.generator_path is not None :
+    gan_mytrainer.G.load_state_dict(torch.load(args.generator_path))
+if args.discriminator_path is not None :
+    gan_mytrainer.D.load_state_dict(torch.load(args.discriminator_path))
+
+if args.mode == 'train' :
     
     t_start = time.time()
     

@@ -68,6 +68,11 @@ def get_args():
                         help='If kernel_sigma<0, then use rule-of-thumb formula to compute the sigma.')
     parser.add_argument('--kappa', type=float, default=-1.0)
     parser.add_argument('--result_path', type=str, default='./sample_data')
+    parser.add_argument('--discriminator_path', type=str, default=None)
+    parser.add_argument('--generator_path', type=str, default=None)
+    parser.add_argument('--fix_discriminator', type=bool, default=False)
+    parser.add_argument('--fix_generator', type=bool, default=False)
+    
     #parser.add_argument('--nonzero_soft_weight_threshold', type=float, default=1e-3,
                         #help='threshold for determining nonzero weights for SVDL')
 

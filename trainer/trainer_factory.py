@@ -28,7 +28,7 @@ class TrainerFactory():
         elif args.gan_model_type == 'ccgan': 
             import trainer.ccgan as trainer
 
-            return trainer.GanTrainer(noise_trainer_iterator, noise_val_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, args.noise_d, args.clipping, args.kernel_sigma, args.kappa, args.threshold_type, args.one_hot)
+            return trainer.GanTrainer(noise_trainer_iterator, noise_val_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, args.noise_d, args.clipping, args.kernel_sigma, args.kappa, args.threshold_type, args.one_hot, args.fix_generator, args.fix_discriminator)
         
     def get_vae_trainer(noise_trainer_iterator, noise_val_iterator, model, args, optimizer, exp_gan_lr_scheduler):
         if args.gan_model_type == 'vae1':
@@ -67,7 +67,7 @@ class gan_GenericTrainer:
     """
     Base class for gan trainer
     """
-    def __init__(self, noise_trainer_iterator, noise_val_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, noise_d, clipping=None, kernel_sigma=None, kappa=None, threshold_type=None, one_hot=None):
+    def __init__(self, noise_trainer_iterator, noise_val_iterator, generator, discriminator, optimizer_g, optimizer_d, exp_gan_lr_scheduler, noise_d, clipping=None, kernel_sigma=None, kappa=None, threshold_type=None, one_hot=None, fix_generator=False, fix_discriminator=False):
         self.train_iterator = noise_trainer_iterator
         self.val_iterator = noise_val_iterator
         
@@ -89,6 +89,8 @@ class gan_GenericTrainer:
         self.kappa = kappa
         self.threshold_type=threshold_type
         self.one_hot=one_hot
+        self.fix_generator=fix_generator
+        self.fix_discriminator=fix_discriminator
         
 class vae_GenericTrainer:
     """

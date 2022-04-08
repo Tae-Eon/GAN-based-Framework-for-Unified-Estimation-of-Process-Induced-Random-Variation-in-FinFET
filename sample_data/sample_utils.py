@@ -597,7 +597,7 @@ def load_samples_and_calculate_EMD(filepath, real_bin_num, minmax, real_samples,
     test_gen_sample_num = test_gen.shape[1]
 
     ###################### Calculate EMD ######################
-    try : 
+    try :
         aa = result['test EMD']
     except :
         test_EMD_score_list, test_sink_score_list = new_EMD_all_pair_each_X_integral(generated_samples = test_gen, real_samples = real_samples, real_bin_num=real_bin_num, num_of_cycle=num_of_cycle, min_list = min_list, max_list = max_list, train_mean=train_mean, train_std = train_std, minmax=minmax, check=False) 
@@ -609,8 +609,7 @@ def load_samples_and_calculate_EMD(filepath, real_bin_num, minmax, real_samples,
     
     return result
 
-
-def load_samples_and_calculate_MMD(filepath, real_samples, min_list, max_list, gamma=100.0):
+def load_samples_and_calculate_MMD(filepath, real_samples, mean_list, std_list, gamma_list):
     with (open(filepath, "rb")) as openfile:
         result = pickle.load(openfile)
     test_gen = result['test sample']
@@ -620,13 +619,14 @@ def load_samples_and_calculate_MMD(filepath, real_samples, min_list, max_list, g
     test_gen_sample_num = test_gen.shape[1]
     
     ###################### Calculate MMD ######################
-    try :
+    try:
         aa = result['test MMD']
-    except :
+    except:
         test_MMD_score_list = []
         for i in range(len(real_samples)):
-            test_gen_tmp = (test_gen[i] - min_list)/max_list
-            real_samples_tmp = (real_samples[i] - min_list)/max_list
+            gamma=gamma_list[i]
+            test_gen_tmp = (test_gen[i] - mean_list)/std_list
+            real_samples_tmp = (real_samples[i] - mean_list)/std_list
             test_MMD_score_list.append(mmd_rbf(test_gen_tmp, real_samples_tmp, gamma=gamma))    
 
         ###################### Add 'MMD value' to file #####################
