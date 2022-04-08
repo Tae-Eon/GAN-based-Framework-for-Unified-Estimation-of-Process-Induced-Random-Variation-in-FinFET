@@ -167,11 +167,11 @@ if args.mode == 'train' :
         t_p_real, t_p_fake = gan_mytrainer.evaluate(mode='test')
         current_d_lr = gan_mytrainer.current_d_lr
 
-        if((epoch+1)% 10 == 0):
+        if((epoch+1)% 1 == 0):
             print("epoch:{:2d}, lr_d:{:.6f}, || train || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, tr_p_real, tr_p_fake))
             print("epoch:{:2d}, lr_d:{:.6f}, || test || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, t_p_real, t_p_fake))
-            result['train_prob'].append((tr_p_real, tr_p_fake))
-            result['test_prob'].append((t_p_real, t_p_fake))
+        result['train_prob'].append((tr_p_real, tr_p_fake))
+        result['test_prob'].append((t_p_real, t_p_fake))
             
     t_end = time.time()
     # net.state_dict()

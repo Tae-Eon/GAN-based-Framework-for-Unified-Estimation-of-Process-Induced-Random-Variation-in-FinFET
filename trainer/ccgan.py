@@ -89,14 +89,10 @@ class GanTrainer(trainer.gan_GenericTrainer):
 #                 print('before', batch_real_samples[j])
                 if self.threshold_type == "hard":
                     if self.one_hot == 0 : # LER, LRW
-                        
                         distance = torch.sum(torch.abs(train_labels-batch_target_labels[j]), dim=1)
-                        #indx_real_in_vicinity = torch.where( (distance>0.00001) * (distance <= self.kappa * num_of_output) )[0]
                         indx_real_in_vicinity = torch.where( (distance <= self.kappa * num_of_output) )[0]
-                        #print('indx_real_in_vicinity',indx_real_in_vicinity)
                         if len(indx_real_in_vicinity)!=0:
                             selected_index = torch.argmin(distance + 0.000001*torch.randn(len(distance)).cuda())
-                            print('selected_index',selected_index)
                             batch_real_samples[j] = train_samples[selected_index]
                                                 
                     else : # RDF
