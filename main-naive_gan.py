@@ -62,7 +62,10 @@ if args.fix_discriminator:
     log_name += str(args.fix_discriminator)
 if args.fix_generator:
     gan_model_spec += str(args.fix_generator)
-    log_name += str(args.fix_discriminator)    
+    log_name += str(args.fix_discriminator)
+if args.gan_nepochs != 200 :
+    gan_model_spec += '_epochs_{}'.format(args.gan_nepochs)
+    log_name += '_epochs_{}'.format(args.gan_nepochs)
 
 print('log_name :', log_name)
 
