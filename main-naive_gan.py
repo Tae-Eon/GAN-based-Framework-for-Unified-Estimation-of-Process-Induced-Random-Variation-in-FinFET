@@ -168,7 +168,7 @@ gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, test_eval
 
 # ====== TRAIN ======
 
-sample_seed_num = 5
+sample_seed_num = 10
 num_of_cycle = dataset_test.test_Y_per_cycle.shape[0]
 num_in_cycle = int(dataset_test.test_Y.shape[0]/num_of_cycle)
 print(num_of_cycle, num_in_cycle)
@@ -195,12 +195,13 @@ if args.mode == 'train' :
 #             print("epoch:{:2d}, lr_d:{:.6f}, || test || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, t_p_real, t_p_fake))
 #         result['train_prob'].append((tr_p_real, tr_p_fake))
 #         result['test_prob'].append((t_p_real, t_p_fake))
-        if args.record_mmd == True:            
-            test_total_result_tmp, _ = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d, sample_seed_num)
-            test_total_result_tmp = test_total_result_tmp.reshape(sample_seed_num, num_of_cycle, args.sample_num, -1)
-            gamma_list = np.ones(num_of_cycle)*args.gamma_mmd
-            MMDs = utils.calculate_MMD(test_total_result_tmp, test_real, dataset.train_Y_mean, dataset.train_Y_std, gamma_list)
-            result['test_mmd_log'].append(np.mean(MMDs))
+        if((epoch+1)% 5 == 0):
+            if args.record_mmd == True:            
+                test_total_result_tmp, _ = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d, sample_seed_num)
+                test_total_result_tmp = test_total_result_tmp.reshape(sample_seed_num, num_of_cycle, args.sample_num, -1)
+                gamma_list = np.ones(num_of_cycle)*args.gamma_mmd
+                MMDs = utils.calculate_MMD(test_total_result_tmp, test_real, dataset.train_Y_mean, dataset.train_Y_std, gamma_list)
+                result['test_mmd_log'].append(np.mean(MMDs))
     #t_end = time.time()
     # net.state_dict()
     torch.save(generator.state_dict(), './models/generator/'+gan_model_spec)
