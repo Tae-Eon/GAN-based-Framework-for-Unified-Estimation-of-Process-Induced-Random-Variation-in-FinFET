@@ -38,12 +38,11 @@ class GanTrainer(trainer.gan_GenericTrainer):
             self.D.train()
             for param in self.D.parameters():
                 param.requires_grad = True
-        
+                
         train_labels = torch.from_numpy(self.train_iterator.dataset.data_x).type(torch.float).cuda() ## LER or RDF+onehot input 
         train_samples = torch.from_numpy(self.train_iterator.dataset.data_y).type(torch.float).cuda() ## random variation output
-            
-            
-            
+
+        
         if self.one_hot == 0: # LER, LRW
             num_of_output = train_labels.shape[1]
             max_x = torch.max(train_labels, dim=0)[0]

@@ -187,7 +187,8 @@ else:
     print('Load mean model----------------')
     print()
     gan_mytrainer.G.load_state_dict(torch.load('./models/generator/'+gan_model_spec))
-
+    # gan_mytrainer.G.load_state_dict(torch.load(args.generator_path))
+    # gan_mytrainer.D.load_state_dict(torch.load(args.discriminator_path))
 
 # ====== EVAL ======
 
@@ -225,7 +226,7 @@ result['Y_std'] = dataset.train_Y_std
 #result['validation EMD'] = val_EMD_score_list
 result['test sample'] = test_total_result
 #result['test EMD'] = test_EMD_score_list
-result['train time'] = t_end-t_start
+#result['train time'] = t_end-t_start
 # # 3: num_of_input
 # # 6: num_of_output
     

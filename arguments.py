@@ -1,6 +1,6 @@
 import argparse
 
-def get_args():
+def get_args(): 
     parser = argparse.ArgumentParser(description='SEMI')
     parser.add_argument('--date', type=str, default='', help='(default=%(default)s)')
     parser.add_argument('--dataset', default='2020_LER_20201008_V008.xlsx', type=str,
@@ -70,11 +70,8 @@ def get_args():
     parser.add_argument('--result_path', type=str, default='./sample_data')
     parser.add_argument('--discriminator_path', type=str, default=None)
     parser.add_argument('--generator_path', type=str, default=None)
-    parser.add_argument('--fix_discriminator', type=bool, default=False)
-    parser.add_argument('--fix_generator', type=bool, default=False)
-    
-    #parser.add_argument('--nonzero_soft_weight_threshold', type=float, default=1e-3,
-                        #help='threshold for determining nonzero weights for SVDL')
+    parser.add_argument('--fix_discriminator', default=False, action='store_true', help='fix discriminator when action')
+    parser.add_argument('--fix_generator', default=False, action='store_true', help='fix discriminator when action')
 
     
 
