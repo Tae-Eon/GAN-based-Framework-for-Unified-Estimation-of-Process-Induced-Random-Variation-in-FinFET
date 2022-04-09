@@ -10,7 +10,8 @@ def get_args():
                                  'rdf_train2020_RDFWFV_20201222_V10.xlsx',
                                  'rdfwfv_wfv_rdf_train2020_RDFWFV_20201222_V10.xlsx',
                                  'train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx',
-                                 'updated_train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
+                                 'updated_train_LERRDFWFV_167set+Testdataset_4set_V002.xlsx',
+                                 'updated_rdfwfv_wfv_rdf_train2020_RDFWFV_20201222_V10.xlsx'
                                  ],
                         help='(default=%(default)s)')
                                  
