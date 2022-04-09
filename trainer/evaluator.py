@@ -18,120 +18,7 @@ class EvaluatorFactory():
         elif testType == 'gaussian':
             return gaussian_evaluator(sample_num, num_output)
         elif testType == 'naive_gan': #
-            return naive_gan_evaluator(sample_num) #
-        
-class gan_evaluator():
-    
-    def __init__(self, sample_num):
-        
-        self.sample_num = sample_num
-        self.prob = {}
-        
-    def train_eval(self, generator, discriminator, val_loader, noise_d):
-        
-        p_real, p_fake = 0., 0.
-        batch_num = 0
-        
-        generator.eval()
-        discriminator.eval()
-        
-        for i, data in enumerate(val_loader):
-            data_x, data_y = data
-            data_x, data_y = data_x.cuda(), data_y.cuda()
-            
-            mini_batch_size = len(data_x)
-            
-            z = utils.sample_z(mini_batch_size, noise_d)
-            # utils.sample_z
-            
-            with torch.autograd.no_grad():
-                p_real += torch.sum(discriminator(data_y, data_x)/mini_batch_size)
-                
-                gen_y = generator(z, data_x)
-                
-                p_fake += torch.sum(discriminator(gen_y, data_x)/mini_batch_size)
-                
-            batch_num += 1
-            
-        p_real /= batch_num
-        p_fake /= batch_num
-        
-        self.prob['p_real_val'].append(p_real)
-        self.prob['p_fake_val'].append(p_fake)
-        
-        return p_real, p_fake
-        
-    def mean_sample(self, mean_model, train_mean, train_std, test_iterator):
-        
-        mean_result = []
-        total = 0
-
-        mean_model.eval()
-        
-        for i, data in enumerate(test_iterator):
-            data_x, data_y = data
-            data_x, data_y = data_x.cuda(), data_y.cuda()
-            
-            mini_batch_size = len(data_x)
-            
-            with torch.autograd.no_grad():
-                mean = mean_model(data_x)
-                
-                mean = mean.data.cpu().numpy()
-                
-                mean = mean*train_std + train_mean
-                mean_result.append(mean)
-                
-                total += mini_batch_size
-        
-        
-        mean_result = np.vstack(mean_result)
-            
-        print("mean_result size: ", mean_result.shape)
-
-        return mean_result, total
-              
-    def noise_sample(self, mean_result, generator, train_mean, train_std, test_loader, num_of_input, num_of_output, noise_d):
-        
-        noise_result = []
-        total = 0
-        
-        generator.eval()
-        
-        for i, data in enumerate(test_loader):
-            
-            data_x, data_y = data
-            print(data_x)
-            data_x, data_y = data_x.cuda(), data_y.cuda()
-            
-            mini_batch_size = len(data_x)
-            
-            with torch.autograd.no_grad():
-                
-                data_x_sample = data_x.repeat(1, self.sample_num).view(-1, num_of_input)
-                              
-                # print("batch * sample_num: (expected)", mini_batch_size*self.sample_num, "(result)", data_x_sample.shape)
-                
-                z = utils.sample_z(mini_batch_size*self.sample_num, noise_d)
-                noise = generator(z, data_x_sample)
-                
-                noise = noise.data.cpu().numpy()
-                                
-                noise = noise*train_std + train_mean
-                
-                noise_result.append(noise)
-                
-                total += mini_batch_size
-            
-        
-        noise_result = np.array(noise_result)
-        #noise_result = noise_result.reshape(-1, num_of_output)
-        noise_result = np.vstack(noise_result)
-        
-        print("noise_result_size: ", noise_result.shape)
-        
-        return noise_result, total
-    
+            return naive_gan_evaluator(sample_num) #    
 
 class naive_gan_evaluator():
     
@@ -175,46 +62,53 @@ class naive_gan_evaluator():
         return p_real, p_fake
         
               
-    def sample(self, generator, train_mean, train_std, test_loader, num_of_input, num_of_output, noise_d):
+    def sample(self, generator, train_mean, train_std, test_loader, num_of_input, num_of_output, noise_d, sample_seed_num):
         
-        y_hat_result = []
-        total = 0
+        result = []
         
-        generator.eval()
-        
-        for i, data in enumerate(test_loader):
+        for seed in range(sample_seed_num):
             
-            data_x, data_y = data
-            print(data_x)
-            data_x, data_y = data_x.cuda(), data_y.cuda()
-            
-            mini_batch_size = len(data_x)
-            
-            with torch.autograd.no_grad():
-                
-                data_x_sample = data_x.repeat(1, self.sample_num).view(-1, num_of_input)
-                              
-                # print("batch * sample_num: (expected)", mini_batch_size*self.sample_num, "(result)", data_x_sample.shape)
-                
-                z = utils.sample_z(mini_batch_size*self.sample_num, noise_d)
-                y_hat = generator(z, data_x_sample)
-                
-                y_hat = y_hat.data.cpu().numpy()
-                                
-                y_hat = y_hat*train_std + train_mean
-                
-                y_hat_result.append(y_hat)
-                
-                total += mini_batch_size
-            
+            print("Sample generated in seed {}".format(seed))
         
-        y_hat_result = np.array(y_hat_result)
-        #noise_result = noise_result.reshape(-1, num_of_output)
-        y_hat_result = np.vstack(y_hat_result)
+            result_per_seed = []
+            total = 0
+
+            generator.eval()
+
+            for i, data in enumerate(test_loader):
+
+                data_x, data_y = data
+                print(data_x)
+                data_x, data_y = data_x.cuda(), data_y.cuda()
+
+                mini_batch_size = len(data_x)
+
+                with torch.autograd.no_grad():
+
+                    data_x_sample = data_x.repeat(1, self.sample_num).view(-1, num_of_input)
+
+                    # print("batch * sample_num: (expected)", mini_batch_size*self.sample_num, "(result)", data_x_sample.shape)
+
+                    z = utils.sample_z(mini_batch_size*self.sample_num, noise_d)
+                    y_hat = generator(z, data_x_sample)
+
+                    y_hat = y_hat.data.cpu().numpy()
+
+                    y_hat = y_hat*train_std + train_mean
+
+                    result_per_seed.append(y_hat)
+
+                    total += mini_batch_size
+
+
+            result_per_seed = np.array(result_per_seed)
+            #noise_result = noise_result.reshape(-1, num_of_output)
+            result_per_seed = np.vstack(result_per_seed)
+            result.append(result_per_seed)
+
+        result = np.array(result)    
         
-        print("noise_result_size: ", y_hat_result.shape)
-        
-        return y_hat_result, total
+        return result, total
 
     
     

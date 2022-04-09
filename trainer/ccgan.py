@@ -148,8 +148,8 @@ class GanTrainer(trainer.gan_GenericTrainer):
             self.optimizer_G.zero_grad()
             if self.fix_generator == False:
                 g_loss.backward()
-            self.optimizer_G.step()
-            
+                
+            self.optimizer_G.step()  
             
         self.prob['p_real_train'].append(p_real_D)
         self.prob['p_fake_train'].append(p_fake_D)
@@ -185,7 +185,7 @@ class GanTrainer(trainer.gan_GenericTrainer):
                 with torch.autograd.no_grad():
 
                     p_real += torch.sum(self.D(data_y, data_x)/mini_batch_size)
-
+                    
                     gen_y = self.G(z, data_x)
 
                     p_fake += torch.sum(self.D(gen_y, data_x)/mini_batch_size)
@@ -193,7 +193,5 @@ class GanTrainer(trainer.gan_GenericTrainer):
                 batch_num += 1
             p_real /= batch_num
             p_fake /= batch_num
-            self.prob['p_real_val'].append(p_real)
-            self.prob['p_fake_val'].append(p_fake)
 
             return p_real, p_fake

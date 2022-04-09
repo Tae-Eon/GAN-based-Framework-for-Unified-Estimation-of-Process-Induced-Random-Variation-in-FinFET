@@ -56,6 +56,13 @@ if args.clipping is not None:
 if args.gan_model_type=='ccgan':
     gan_model_spec += '_kappa_'+str(args.kappa)+'_kernel_sigma_'+str(args.kernel_sigma)
     log_name += '_kappa_'+str(args.kappa)+'_kernel_sigma_'+str(args.kernel_sigma)
+    
+if args.fix_discriminator:
+    gan_model_spec += str(args.fix_discriminator)
+    log_name += str(args.fix_discriminator)
+if args.fix_generator:
+    gan_model_spec += str(args.fix_generator)
+    log_name += str(args.fix_discriminator)    
 
 print('log_name :', log_name)
 
@@ -205,14 +212,18 @@ else:
 # val_EMD_score_list, val_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = val_total_result, real_samples = val_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
 # Test set
-test_total_result, test_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d)
+
+sample_seed_num = 10
+
+test_total_result, test_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d, sample_seed_num)
 
 # test emd
 num_of_cycle = dataset_test.test_Y_per_cycle.shape[0]
 num_in_cycle = int(dataset_test.test_Y.shape[0]/num_of_cycle)
 print(num_of_cycle, num_in_cycle)
 
-test_total_result = test_total_result.reshape(num_of_cycle, args.sample_num, -1)
+test_total_result = test_total_result.reshape(sample_seed_num, num_of_cycle, args.sample_num, -1)
+print("sampled result of {} seeds: {}".format(sample_seed_num, test_total_result.shape))
 test_real = dataset_test.test_Y.reshape(num_of_cycle, num_in_cycle, -1)
 
 # test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
