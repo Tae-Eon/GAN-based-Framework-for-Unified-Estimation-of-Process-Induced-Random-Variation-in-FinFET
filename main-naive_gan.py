@@ -20,6 +20,8 @@ args = get_args()
 result = {}
 result['train_prob'] = []
 result['test_prob'] = []
+result['test_mmd_log'] = []
+
 
 log_name = 'naive_date_{}_data_{}_model_{}_seed_{}_lr_{}_{}_hidden_dim_{}_batch_size_{}_noise_d_{}_sample_num_{}_tr_num_in_cycle_{}_layer_{}'.format(
     args.date,
@@ -166,6 +168,12 @@ gan_mytrainer = trainer.TrainerFactory.get_gan_trainer(train_iterator, test_eval
 
 # ====== TRAIN ======
 
+sample_seed_num = 5
+num_of_cycle = dataset_test.test_Y_per_cycle.shape[0]
+num_in_cycle = int(dataset_test.test_Y.shape[0]/num_of_cycle)
+print(num_of_cycle, num_in_cycle)
+test_real = dataset_test.test_Y.reshape(num_of_cycle, num_in_cycle, -1)
+
 if args.generator_path is not None :
     gan_mytrainer.G.load_state_dict(torch.load(args.generator_path))
 if args.discriminator_path is not None :
@@ -173,22 +181,27 @@ if args.discriminator_path is not None :
 
 if args.mode == 'train' :
     
-    t_start = time.time()
+    #t_start = time.time()
     
     for epoch in range(args.gan_nepochs):
 
         gan_mytrainer.train()
-        tr_p_real, tr_p_fake = gan_mytrainer.evaluate(mode='train')
-        t_p_real, t_p_fake = gan_mytrainer.evaluate(mode='test')
-        current_d_lr = gan_mytrainer.current_d_lr
+#         tr_p_real, tr_p_fake = gan_mytrainer.evaluate(mode='train')
+#         t_p_real, t_p_fake = gan_mytrainer.evaluate(mode='test')
+#         current_d_lr = gan_mytrainer.current_d_lr
 
-        if((epoch+1)% 1 == 0):
-            print("epoch:{:2d}, lr_d:{:.6f}, || train || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, tr_p_real, tr_p_fake))
-            print("epoch:{:2d}, lr_d:{:.6f}, || test || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, t_p_real, t_p_fake))
-        result['train_prob'].append((tr_p_real, tr_p_fake))
-        result['test_prob'].append((t_p_real, t_p_fake))
-            
-    t_end = time.time()
+#         if((epoch+1)% 1 == 0):
+#             print("epoch:{:2d}, lr_d:{:.6f}, || train || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, tr_p_real, tr_p_fake))
+#             print("epoch:{:2d}, lr_d:{:.6f}, || test || p_real:{:.6f}, p_fake:{:.6f}".format(epoch, current_d_lr, t_p_real, t_p_fake))
+#         result['train_prob'].append((tr_p_real, tr_p_fake))
+#         result['test_prob'].append((t_p_real, t_p_fake))
+        if args.record_mmd == True:            
+            test_total_result_tmp, _ = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d, sample_seed_num)
+            test_total_result_tmp = test_total_result_tmp.reshape(sample_seed_num, num_of_cycle, args.sample_num, -1)
+            gamma_list = np.ones(num_of_cycle)*args.gamma_mmd
+            MMDs = utils.calculate_MMD(test_total_result_tmp, test_real, dataset.train_Y_mean, dataset.train_Y_std, gamma_list)
+            result['test_mmd_log'].append(np.mean(MMDs))
+    #t_end = time.time()
     # net.state_dict()
     torch.save(generator.state_dict(), './models/generator/'+gan_model_spec)
     torch.save(discriminator.state_dict(), './models/discriminator/'+gan_model_spec)
@@ -216,18 +229,13 @@ else:
 
 # Test set
 
-sample_seed_num = 10
+
 
 test_total_result, test_total_num = t_classifier.sample(generator, dataset.train_Y_mean, dataset.train_Y_std, test_iterator, args.num_of_input+args.one_hot, args.num_of_output, args.noise_d, sample_seed_num)
 
-# test emd
-num_of_cycle = dataset_test.test_Y_per_cycle.shape[0]
-num_in_cycle = int(dataset_test.test_Y.shape[0]/num_of_cycle)
-print(num_of_cycle, num_in_cycle)
-
 test_total_result = test_total_result.reshape(sample_seed_num, num_of_cycle, args.sample_num, -1)
 print("sampled result of {} seeds: {}".format(sample_seed_num, test_total_result.shape))
-test_real = dataset_test.test_Y.reshape(num_of_cycle, num_in_cycle, -1)
+
 
 # test_EMD_score_list, test_sink_score_list = sample_utils.new_EMD_all_pair_each_X_integral(generated_samples = test_total_result, real_samples = test_real, real_bin_num=args.real_bin_num, num_of_cycle=num_of_cycle, min_list = train_Y_min, max_list = train_Y_max, train_mean=dataset.train_Y_mean, train_std = dataset.train_Y_std, minmax=minmax, check=False) 
 
