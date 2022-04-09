@@ -69,6 +69,7 @@ class naive_gan_evaluator():
         for seed in range(sample_seed_num):
             
             print("Sample generated in seed {}".format(seed))
+            utils.set_seed(seed)
         
             result_per_seed = []
             total = 0
