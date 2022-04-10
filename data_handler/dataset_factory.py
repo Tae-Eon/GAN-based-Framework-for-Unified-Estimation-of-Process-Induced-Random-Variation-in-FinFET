@@ -41,5 +41,5 @@ class DatasetFactory:
         
     def get_test_dataset(args):
 
-        if args.dataset_test == '2020_LER_20201102_testset_V04.xlsx' or args.dataset_test == 'rdfwfv_wfv_rdf_train2020_RDFWFV_20201222_V10.xlsx' or args.dataset_test == '2021_RDFWFV_20210107.xlsx' or args.dataset_test == 'test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx' or args.dataset_test == 'updated_test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx':
+        if args.dataset_test == '2020_LER_20201102_testset_V04.xlsx' or args.dataset_test == 'rdfwfv_wfv_rdf_train2020_RDFWFV_20201222_V10.xlsx' or args.dataset_test == '2021_RDFWFV_20210107.xlsx' or args.dataset_test == 'test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx' or args.dataset_test == 'updated_test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx' or args.dataset_test == 'updated_2021_RDFWFV_20210107.xlsx':
             return data.SEMI_sample_data(args.dataset_test)

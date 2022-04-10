@@ -19,6 +19,7 @@ def get_args():
                         choices=['2020_LER_20201102_testset_V04.xlsx',
                                  'rdfwfv_wfv_rdf_test2020_RDFWFV_20201222_V10.xlsx',
                                  '2021_RDFWFV_20210107.xlsx',
+                                 'updated_2021_RDFWFV_20210107.xlsx',
                                  'test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx',
                                  'updated_test_LERRDFWFV_167set+Testdataset_4set_V002.xlsx'
                                 ],
