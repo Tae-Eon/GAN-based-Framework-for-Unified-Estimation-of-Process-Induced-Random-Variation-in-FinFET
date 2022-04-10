@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from scipy import linalg
 import random
 import os
+from sklearn import metrics
     
     
 def train_mean_std(args, x, y):
@@ -108,3 +109,39 @@ def makedirs(path):
     except OSError: 
         if not os.path.isdir(path): 
             raise
+
+
+            
+def mmd_rbf(X, Y, gamma=1.0):
+    """MMD using rbf (gaussian) kernel (i.e., k(x,y) = exp(-gamma * ||x-y||^2 / 2))
+    Arguments:
+        X {[n_sample1, dim]} -- [X matrix]
+        Y {[n_sample2, dim]} -- [Y matrix]
+    Keyword Arguments:
+        gamma {float} -- [kernel parameter] (default: {1.0})
+    Returns:
+        [scalar] -- [MMD value]
+    """
+    XX = metrics.pairwise.rbf_kernel(X, X, gamma)
+    YY = metrics.pairwise.rbf_kernel(Y, Y, gamma)
+    XY = metrics.pairwise.rbf_kernel(X, Y, gamma)
+    return XX.mean() + YY.mean() - 2 * XY.mean()
+            
+def calculate_MMD(gen_samples_set, real_samples, mean_list, std_list, gamma_list):
+    
+    num_of_seed = gen_samples_set.shape[0]
+    ###################### Calculate MMD ######################
+    test_MMD_score_list_set = []
+    for seed in range(num_of_seed):
+        test_gen = gen_samples_set[seed]
+        test_MMD_score_list = []
+        for i in range(len(real_samples)):
+            gamma=gamma_list[i]
+            test_gen_tmp = (test_gen[i] - mean_list)/std_list
+            real_samples_tmp = (real_samples[i] - mean_list)/std_list
+            test_MMD_score_list.append(mmd_rbf(test_gen_tmp, real_samples_tmp, gamma=gamma))    
+        test_MMD_score_list_set.append(test_MMD_score_list)
+    ###################### Add 'MMD value' to file #####################
+    MMDs = np.array(test_MMD_score_list_set)
+    
+    return MMDs
